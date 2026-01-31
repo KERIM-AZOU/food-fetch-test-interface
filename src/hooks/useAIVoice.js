@@ -55,7 +55,7 @@ const useAIVoice = () => {
     try {
       setIsLoading(true);
 
-      const response = await fetch(`${API_URL}/api/tts`, {
+      const response = await fetch(`${API_URL}/tts`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
