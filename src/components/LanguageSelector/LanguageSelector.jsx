@@ -47,7 +47,8 @@ const LanguageSelector = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-40"
+              className="fixed inset-0"
+              style={{ zIndex: 9998 }}
               onClick={() => setIsOpen(false)}
             />
 
@@ -56,7 +57,8 @@ const LanguageSelector = () => {
               initial={{ opacity: 0, scale: 0.95, y: -10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -10 }}
-              className="absolute right-0 top-full mt-2 z-50 bg-gray-900/95 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden min-w-[160px]"
+              className="absolute right-0 top-full mt-2 bg-gray-900/95 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl overflow-hidden min-w-[160px]"
+              style={{ zIndex: 9999 }}
             >
               <div className="py-2 max-h-[300px] overflow-y-auto">
                 {LANGUAGES.map((lang) => (

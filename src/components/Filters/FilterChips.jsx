@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import useChatStore from '../../store/chatStore';
 import MapModal from './MapModal';
 
@@ -42,10 +43,10 @@ const FilterChips = () => {
             <button
               key={platform.id}
               onClick={() => togglePlatform(platform.id)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                 isActive
                   ? `${platform.color} text-white`
-                  : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                  : 'bg-white/10 text-white/60 hover:bg-white/20'
               }`}
             >
               {platform.label}
@@ -54,40 +55,35 @@ const FilterChips = () => {
         })}
 
         {/* Divider */}
-        <div className="w-px h-8 bg-gray-700 mx-1" />
+        <div className="w-px h-6 bg-white/20 mx-1" />
 
         {/* Location buttons */}
         <button
           onClick={handleGetCurrentLocation}
-          className="px-4 py-2 rounded-full text-sm font-medium bg-gray-800 text-gray-400 hover:bg-gray-700 flex items-center gap-2"
+          className="px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 text-white/60 hover:bg-white/20 flex items-center gap-1.5 transition-all"
           title="Use my location"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
-          My Location
+          GPS
         </button>
 
         <button
           onClick={() => setShowMap(true)}
-          className="px-4 py-2 rounded-full text-sm font-medium bg-gray-800 text-gray-400 hover:bg-gray-700 flex items-center gap-2"
+          className="px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 text-white/60 hover:bg-white/20 flex items-center gap-1.5 transition-all"
           title="Select location on map"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
           </svg>
           Map
         </button>
-
-        {/* Show current location */}
-        <span className="text-xs text-gray-500">
-          ({location.lat.toFixed(4)}, {location.lon.toFixed(4)})
-        </span>
       </div>
 
-      {/* Map Modal */}
-      {showMap && (
+      {/* Map Modal - rendered in portal to ensure it's on top */}
+      {showMap && createPortal(
         <MapModal
           onClose={() => setShowMap(false)}
           onSelectLocation={(lat, lon) => {
@@ -95,7 +91,8 @@ const FilterChips = () => {
             setShowMap(false);
           }}
           initialLocation={location}
-        />
+        />,
+        document.body
       )}
     </>
   );

@@ -54,7 +54,7 @@ const MapModal = ({ onClose, onSelectLocation, initialLocation }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+    <div className="fixed inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm" style={{ zIndex: 9999 }}>
       <div className="bg-gray-900 rounded-2xl w-full max-w-2xl mx-4 overflow-hidden shadow-2xl border border-gray-700">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-700">
