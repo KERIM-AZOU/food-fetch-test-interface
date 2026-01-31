@@ -8,7 +8,25 @@ import LanguageSelector from './components/LanguageSelector/LanguageSelector';
 import ResultsPage from './pages/ResultsPage';
 import useChat from './hooks/useChat';
 import useChatStore from './store/chatStore';
-import './App.css';
+
+// Apply base styles via JS to avoid CSS caching issues
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = `
+    html, body, #root {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      background: #000;
+      -webkit-tap-highlight-color: transparent;
+    }
+    * { box-sizing: border-box; }
+    input { font-size: 16px !important; }
+  `;
+  document.head.appendChild(style);
+}
 
 function HomePage() {
   const [textInput, setTextInput] = useState('');
@@ -36,7 +54,7 @@ function HomePage() {
   const hasMessages = messages.length > 0;
 
   return (
-    <div className="bg-black text-white h-screen h-[100dvh] flex flex-col overflow-hidden relative">
+    <div className="bg-black text-white fixed inset-0 overflow-hidden">
       {/* Siri-like gradient background */}
       <div className="absolute inset-0 bg-gradient-to-b from-gray-900 via-black to-black" />
       {/* Animated background blur effect */}
@@ -62,74 +80,80 @@ function HomePage() {
       </div>
 
       {/* Header - fixed at top */}
-      <header className="relative z-50 p-4 flex items-center justify-between flex-shrink-0">
+      <header className="fixed top-0 left-0 right-0 z-50 p-3 sm:p-4 flex items-center justify-between bg-black/80 backdrop-blur-sm">
         <button
           onClick={() => setShowFilters(!showFilters)}
-          className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+          className="p-1.5 sm:p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
         >
-          <svg className="w-5 h-5 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 sm:w-5 sm:h-5 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
           </svg>
         </button>
 
         <div className="text-center">
-          <h1 className="text-lg font-semibold text-white/90">Food Finder</h1>
+          <h1 className="text-base sm:text-lg font-semibold text-white/90">Food Finder</h1>
         </div>
 
         <LanguageSelector />
       </header>
 
-      {/* Filters panel - slides down */}
+      {/* Filters panel - fixed below header */}
       <AnimatePresence>
         {showFilters && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="relative z-50 overflow-hidden flex-shrink-0"
+            className="fixed top-12 sm:top-14 left-0 right-0 z-40 overflow-hidden bg-black/80 backdrop-blur-sm"
           >
-            <div className="px-4 pb-4">
+            <div className="px-3 sm:px-4 py-3 sm:py-4">
               <FilterChips />
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Main chat area - scrollable middle section */}
-      <div className="flex-1 relative z-10 flex flex-col min-h-0 overflow-hidden">
-        <div className="flex-1 overflow-y-auto">
+      {/* Main scrollable area */}
+      <main
+        className="absolute inset-0 overflow-y-auto overflow-x-hidden"
+        style={{
+          paddingTop: showFilters ? '7rem' : '3.5rem',
+          paddingBottom: '10rem'
+        }}
+      >
+        <div className="relative z-10">
           <ChatWindow />
-        </div>
 
-        {/* View All Results button */}
-        <AnimatePresence>
-          {lastResults.length > 0 && pagination && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="px-4 py-2 text-center flex-shrink-0"
-            >
-              <button
-                onClick={handleViewAllResults}
-                className="px-5 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-full text-sm font-medium transition-all border border-white/20"
+          {/* View All Results button */}
+          <AnimatePresence>
+            {lastResults.length > 0 && pagination && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                className="px-3 sm:px-4 py-2 text-center"
               >
-                View All {pagination.total_products} Results
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+                <button
+                  onClick={handleViewAllResults}
+                  className="px-4 sm:px-5 py-1.5 sm:py-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-full text-xs sm:text-sm font-medium transition-all border border-white/20"
+                >
+                  View All {pagination.total_products} Results
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </main>
 
-      {/* Bottom area with floating sphere and input - fixed at bottom */}
-      <div className="relative z-10 pb-6 flex-shrink-0 bg-gradient-to-t from-black via-black/80 to-transparent pt-4">
+      {/* Bottom area - fixed at bottom */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 pb-4 sm:pb-6 bg-gradient-to-t from-black via-black/95 to-transparent pt-4">
         {/* Floating Voice Sphere */}
-        <div className="flex justify-center py-4">
+        <div className="flex justify-center py-2 sm:py-3">
           <VoiceSphere />
         </div>
 
-        {/* Text input - subtle, below the sphere */}
-        <form onSubmit={handleTextSubmit} className="px-6">
+        {/* Text input */}
+        <form onSubmit={handleTextSubmit} className="px-4 sm:px-6">
           <div className="relative max-w-md mx-auto">
             <input
               type="text"
@@ -137,14 +161,14 @@ function HomePage() {
               onChange={(e) => setTextInput(e.target.value)}
               placeholder={hasMessages ? "Or type here..." : "Tap the mic or type here..."}
               disabled={isLoading}
-              className="w-full bg-white/5 backdrop-blur-sm text-white px-4 py-2.5 pr-10 rounded-full border border-white/10 focus:border-white/30 focus:bg-white/10 focus:outline-none placeholder-white/30 text-sm disabled:opacity-50 transition-all"
+              className="w-full bg-white/5 backdrop-blur-sm text-white px-3 sm:px-4 py-2 sm:py-2.5 pr-9 sm:pr-10 rounded-full border border-white/10 focus:border-white/30 focus:bg-white/10 focus:outline-none placeholder-white/30 text-xs sm:text-sm disabled:opacity-50 transition-all"
             />
             <button
               type="submit"
               disabled={!textInput.trim() || isLoading}
-              className="absolute right-1 top-1/2 -translate-y-1/2 p-2 text-white/40 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 sm:p-2 text-white/40 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
               </svg>
             </button>
@@ -152,7 +176,7 @@ function HomePage() {
         </form>
 
         {/* Safe area for iOS */}
-        <div className="h-safe-area-inset-bottom" />
+        <div style={{ height: 'env(safe-area-inset-bottom, 0px)' }} />
       </div>
     </div>
   );

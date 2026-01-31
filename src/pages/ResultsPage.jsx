@@ -101,23 +101,23 @@ const ResultsPage = () => {
     }
 
     return (
-      <div className="flex items-center justify-center gap-2 mt-8">
+      <div className="flex items-center justify-center gap-1.5 sm:gap-2 mt-6 sm:mt-8">
         <button
           onClick={() => handlePageChange(current_page - 1)}
           disabled={!pagination.has_prev}
-          className="px-4 py-2 rounded-lg bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700"
+          className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg bg-gray-800 text-white text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700"
         >
-          Previous
+          Prev
         </button>
 
         {pages.map((page, index) => (
           page === '...' ? (
-            <span key={`ellipsis-${index}`} className="px-2 text-gray-500">...</span>
+            <span key={`ellipsis-${index}`} className="px-1.5 sm:px-2 text-gray-500 text-xs sm:text-sm">...</span>
           ) : (
             <button
               key={page}
               onClick={() => handlePageChange(page)}
-              className={`w-10 h-10 rounded-lg ${
+              className={`w-8 h-8 sm:w-10 sm:h-10 rounded-md sm:rounded-lg text-xs sm:text-sm ${
                 page === current_page
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-800 text-white hover:bg-gray-700'
@@ -131,7 +131,7 @@ const ResultsPage = () => {
         <button
           onClick={() => handlePageChange(current_page + 1)}
           disabled={!pagination.has_next}
-          className="px-4 py-2 rounded-lg bg-gray-800 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700"
+          className="px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-md sm:rounded-lg bg-gray-800 text-white text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-700"
         >
           Next
         </button>
@@ -140,16 +140,16 @@ const ResultsPage = () => {
   };
 
   return (
-    <div className="h-screen h-[100dvh] bg-gradient-to-b from-gray-900 to-black text-white flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-gradient-to-b from-gray-900 to-black text-white overflow-hidden">
       {/* Header - fixed at top */}
-      <header className="flex-shrink-0 z-50 bg-gray-900/95 backdrop-blur border-b border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-gray-900/95 backdrop-blur-sm border-b border-gray-800">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2.5 sm:py-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <button
               onClick={() => navigate('/')}
-              className="p-2 hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0"
+              className="p-1.5 sm:p-2 hover:bg-gray-800 rounded-md sm:rounded-lg transition-colors flex-shrink-0"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
@@ -161,13 +161,14 @@ const ResultsPage = () => {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search for food..."
-                  className="w-full bg-gray-800 text-white px-4 py-3 pr-12 rounded-full border border-gray-700 focus:border-blue-500 focus:outline-none"
+                  className="w-full bg-gray-800 text-white text-sm sm:text-base px-3 sm:px-4 py-2 sm:py-3 pr-10 sm:pr-12 rounded-full border border-gray-700 focus:border-blue-500 focus:outline-none"
+                  style={{ fontSize: '16px' }}
                 />
                 <button
                   type="submit"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-white"
+                  className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 p-1.5 sm:p-2 text-gray-400 hover:text-white"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </button>
@@ -176,22 +177,25 @@ const ResultsPage = () => {
           </div>
 
           {/* Filters */}
-          <div className="mt-4 overflow-x-auto">
+          <div className="mt-2.5 sm:mt-4 overflow-x-auto">
             <FilterChips />
           </div>
         </div>
       </header>
 
       {/* Main content - scrollable */}
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-7xl mx-auto px-4 py-6">
+      <main
+        className="absolute inset-0 overflow-y-auto overflow-x-hidden"
+        style={{ paddingTop: '6.5rem', paddingBottom: '1rem' }}
+      >
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         {/* Results info */}
         {pagination && (
-          <div className="mb-6 flex items-center justify-between">
-            <p className="text-gray-400">
+          <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+            <p className="text-gray-400 text-xs sm:text-base">
               Showing {lastResults.length} of {pagination.total_products} results for "{query}"
             </p>
-            <p className="text-gray-500 text-sm">
+            <p className="text-gray-500 text-[10px] sm:text-sm">
               Page {pagination.current_page} of {pagination.total_pages}
             </p>
           </div>
@@ -199,9 +203,9 @@ const ResultsPage = () => {
 
         {/* Loading state */}
         {isLoading && (
-          <div className="flex items-center justify-center py-20">
+          <div className="flex items-center justify-center py-16 sm:py-20">
             <motion.div
-              className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full"
+              className="w-10 h-10 sm:w-12 sm:h-12 border-3 sm:border-4 border-blue-500 border-t-transparent rounded-full"
               animate={{ rotate: 360 }}
               transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
             />
@@ -213,7 +217,7 @@ const ResultsPage = () => {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex flex-wrap justify-center gap-4"
+            className="flex flex-wrap justify-center gap-2.5 sm:gap-4"
           >
             {lastResults.map((product, index) => (
               <motion.div
@@ -230,14 +234,17 @@ const ResultsPage = () => {
 
         {/* No results */}
         {!isLoading && lastResults.length === 0 && query && (
-          <div className="text-center py-20">
-            <p className="text-gray-400 text-lg">No results found for "{query}"</p>
-            <p className="text-gray-500 mt-2">Try a different search term</p>
+          <div className="text-center py-16 sm:py-20">
+            <p className="text-gray-400 text-sm sm:text-lg">No results found for "{query}"</p>
+            <p className="text-gray-500 mt-1.5 sm:mt-2 text-xs sm:text-base">Try a different search term</p>
           </div>
         )}
 
         {/* Pagination */}
         {renderPagination()}
+
+        {/* Bottom padding for safe area */}
+        <div style={{ height: 'env(safe-area-inset-bottom, 0px)' }} />
         </div>
       </main>
     </div>

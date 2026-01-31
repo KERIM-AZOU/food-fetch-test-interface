@@ -188,7 +188,7 @@ const VoiceSphere = () => {
 
         {/* Main sphere - Siri style */}
         <motion.div
-          className="relative w-16 h-16 rounded-full overflow-hidden"
+          className="relative w-12 h-12 sm:w-16 sm:h-16 rounded-full overflow-hidden"
           style={{
             background: `linear-gradient(135deg, ${colors[0]}, ${colors[1]}, ${colors[2]}, ${colors[3]})`,
             backgroundSize: '300% 300%',
@@ -219,7 +219,7 @@ const VoiceSphere = () => {
               animate={{ scale: [1, 1 + volume * 0.3, 1] }}
               transition={{ duration: 0.15 }}
             >
-              <div className="w-8 h-8 rounded-full bg-white/20" />
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-white/20" />
             </motion.div>
           )}
 
@@ -227,7 +227,7 @@ const VoiceSphere = () => {
           {status === 'processing' && !isSpeaking && !isGreeting && (
             <div className="absolute inset-0 flex items-center justify-center">
               <motion.div
-                className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full"
+                className="w-6 h-6 sm:w-8 sm:h-8 border-2 border-white/30 border-t-white rounded-full"
                 animate={{ rotate: 360 }}
                 transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
               />
@@ -238,14 +238,14 @@ const VoiceSphere = () => {
           {(isSpeaking || isGreeting) && (
             <div className="absolute inset-0 flex items-center justify-center">
               <motion.div
-                className="flex items-end justify-center gap-0.5 h-6"
+                className="flex items-end justify-center gap-0.5 h-5 sm:h-6"
                 animate={{ opacity: 1 }}
               >
                 {[0, 1, 2, 3, 4].map((i) => (
                   <motion.div
                     key={i}
-                    className="w-1 bg-white/80 rounded-full"
-                    animate={{ height: ['8px', '20px', '8px'] }}
+                    className="w-0.5 sm:w-1 bg-white/80 rounded-full"
+                    animate={{ height: ['6px', '16px', '6px'] }}
                     transition={{
                       duration: 0.5,
                       repeat: Infinity,
@@ -261,7 +261,7 @@ const VoiceSphere = () => {
           {/* Idle microphone icon */}
           {status === 'idle' && !isSpeaking && !isGreeting && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <svg className="w-6 h-6 text-white/90" fill="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white/90" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93h2c0 3.31 2.69 6 6 6s6-2.69 6-6h2c0 4.08-3.06 7.44-7 7.93V19h3v2H9v-2h3v-3.07z" />
               </svg>
             </div>
@@ -270,7 +270,7 @@ const VoiceSphere = () => {
           {/* Error icon */}
           {status === 'error' && !isSpeaking && !isGreeting && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <svg className="w-6 h-6 text-white/90" fill="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-white/90" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
               </svg>
             </div>
@@ -285,7 +285,7 @@ const VoiceSphere = () => {
             initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -5 }}
-            className="mt-3 text-white/70 text-xs font-medium"
+            className="mt-2 sm:mt-3 text-white/70 text-[10px] sm:text-xs font-medium"
           >
             {isSpeaking || isGreeting
               ? 'Speaking...'
@@ -305,7 +305,7 @@ const VoiceSphere = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="mt-2 text-white/60 text-sm max-w-[200px] text-center truncate"
+            className="mt-1.5 sm:mt-2 text-white/60 text-xs sm:text-sm max-w-[180px] sm:max-w-[200px] text-center truncate"
           >
             "{transcript.interim}"
           </motion.p>

@@ -28,28 +28,28 @@ const ChatWindow = () => {
   };
 
   return (
-    <div className="flex-grow p-4 space-y-3">
+    <div className="flex-grow p-3 sm:p-4 space-y-2 sm:space-y-3">
       {/* Empty state - Siri style */}
       {messages.length === 0 && (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="flex flex-col items-center justify-center py-16 px-4"
+          className="flex flex-col items-center justify-center py-10 sm:py-16 px-4"
         >
           {/* App icon */}
           <motion.div
-            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-6 shadow-lg shadow-purple-500/20"
+            className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-4 sm:mb-6 shadow-lg shadow-purple-500/20"
             initial={{ y: 20 }}
             animate={{ y: 0 }}
             transition={{ delay: 0.1 }}
           >
-            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-7 h-7 sm:w-10 sm:h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </motion.div>
 
           <motion.h2
-            className="text-xl font-semibold text-white/90 mb-2"
+            className="text-lg sm:text-xl font-semibold text-white/90 mb-1.5 sm:mb-2"
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.2 }}
@@ -58,7 +58,7 @@ const ChatWindow = () => {
           </motion.h2>
 
           <motion.p
-            className="text-white/50 text-center text-sm mb-8 max-w-xs"
+            className="text-white/50 text-center text-xs sm:text-sm mb-6 sm:mb-8 max-w-xs"
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.3 }}
@@ -68,7 +68,7 @@ const ChatWindow = () => {
 
           {/* Suggestion chips - Siri style */}
           <motion.div
-            className="flex flex-wrap justify-center gap-2"
+            className="flex flex-wrap justify-center gap-1.5 sm:gap-2"
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.4 }}
@@ -79,7 +79,7 @@ const ChatWindow = () => {
                 onClick={() => {
                   const { handleSearch } = require('../../hooks/useChat').default();
                 }}
-                className="px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full text-sm text-white/70 hover:text-white transition-all border border-white/10"
+                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full text-xs sm:text-sm text-white/70 hover:text-white transition-all border border-white/10"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.5 + i * 0.1 }}
