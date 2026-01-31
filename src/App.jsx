@@ -36,10 +36,9 @@ function HomePage() {
   const hasMessages = messages.length > 0;
 
   return (
-    <div className="bg-black text-white min-h-screen flex flex-col relative overflow-x-hidden overflow-y-scroll">
+    <div className="bg-black text-white min-h-screen flex flex-col relative">
       {/* Siri-like gradient background */}
       <div className="absolute inset-0 bg-gradient-to-b from-gray-900 via-black to-black" />
-
       {/* Animated background blur effect */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
@@ -61,9 +60,8 @@ function HomePage() {
           transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
         />
       </div>
-
       {/* Header - minimal Siri style */}
-      <header className="fixed top-0 left-0 right-0 z-50 p-4 flex items-center justify-between">
+      <header className="relative z-50 p-4 flex items-center justify-between">
         <button
           onClick={() => setShowFilters(!showFilters)}
           className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
@@ -79,7 +77,6 @@ function HomePage() {
 
         <LanguageSelector />
       </header>
-
       {/* Filters panel - slides down */}
       <AnimatePresence>
         {showFilters && (
