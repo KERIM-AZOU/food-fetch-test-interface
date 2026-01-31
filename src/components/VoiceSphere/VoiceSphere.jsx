@@ -42,7 +42,7 @@ const VoiceSphere = () => {
 
     // Otherwise fetch from backend
     try {
-      const response = await fetch(`${API_URL}/api/translate`, {
+      const response = await fetch(`${API_URL}/translate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'greeting', language })

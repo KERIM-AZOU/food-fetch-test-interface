@@ -148,7 +148,7 @@ const useVoiceRecognition = () => {
 
       console.log('Sending audio to backend for transcription...');
 
-      const response = await fetch(`${API_URL}/api/transcribe`, {
+      const response = await fetch(`${API_URL}/transcribe`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

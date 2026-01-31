@@ -10,7 +10,7 @@ async function translateText(text, language) {
   if (language === 'en') return text;
 
   try {
-    const response = await fetch(`${API_URL}/api/translate`, {
+    const response = await fetch(`${API_URL}/translate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text, language })
@@ -95,7 +95,7 @@ const useChat = () => {
     try {
       // Extract keywords using the backend (pass detected language)
       const params = getSearchParams();
-      const processResponse = await fetch(`${API_URL}/api/process-voice`, {
+      const processResponse = await fetch(`${API_URL}/process-voice`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
