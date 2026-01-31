@@ -63,7 +63,7 @@ function HomePage() {
       </div>
 
       {/* Header - minimal Siri style */}
-      <header className="relative z-10 p-4 flex items-center justify-between">
+      <header className="relative z-50 p-4 flex items-center justify-between">
         <button
           onClick={() => setShowFilters(!showFilters)}
           className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
