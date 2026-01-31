@@ -75,11 +75,14 @@ const useChat = () => {
 
       setSphereState('idle');
     } catch (error) {
+      console.error('Search error:', error);
       addMessage({
         type: 'error',
         content: 'Sorry, I had trouble searching. Please try again.'
       });
       setSphereState('error');
+      // Auto-reset to idle after showing error briefly
+      setTimeout(() => setSphereState('idle'), 3000);
     } finally {
       setIsLoading(false);
     }
@@ -87,7 +90,10 @@ const useChat = () => {
 
   const handleVoiceInput = useCallback(async (voiceText, detectedLanguage = 'en') => {
     const rawText = voiceText.trim();
-    if (!rawText) return;
+    if (!rawText) {
+      setSphereState('idle');
+      return;
+    }
 
     setIsLoading(true);
     setSphereState('processing');
@@ -164,6 +170,8 @@ const useChat = () => {
         content: 'Sorry, I had trouble processing that. Please try again.'
       });
       setSphereState('error');
+      // Auto-reset to idle after showing error briefly
+      setTimeout(() => setSphereState('idle'), 3000);
     } finally {
       setIsLoading(false);
     }

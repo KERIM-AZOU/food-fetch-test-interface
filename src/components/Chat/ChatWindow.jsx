@@ -18,7 +18,6 @@ const ChatWindow = () => {
     navigate(`/results?q=${encodeURIComponent(searchTerm)}`);
   };
 
-  // Find the last user message to use as search term
   const getSearchTermForMessage = (msgIndex) => {
     for (let i = msgIndex; i >= 0; i--) {
       if (messages[i].type === 'user') {
@@ -29,60 +28,111 @@ const ChatWindow = () => {
   };
 
   return (
-    <div className="flex-grow p-4 space-y-4 overflow-y-auto">
+    <div className="flex-grow p-4 space-y-3">
+      {/* Empty state - Siri style */}
       {messages.length === 0 && (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center py-12"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center justify-center py-16 px-4"
         >
-          <h2 className="text-2xl font-bold text-white mb-2">Food Finder</h2>
-          <p className="text-gray-400">
-            Tap the voice sphere below and tell me what you'd like to eat!
-          </p>
-          <p className="text-gray-500 text-sm mt-4">
-            I'll search Snoonu, Rafeeq, and Talabat to find the best deals.
-          </p>
-          <div className="mt-6 flex flex-wrap justify-center gap-2">
-            <span className="px-3 py-1 bg-gray-800 rounded-full text-sm text-gray-400">Try: "pizza"</span>
-            <span className="px-3 py-1 bg-gray-800 rounded-full text-sm text-gray-400">Try: "burger"</span>
-            <span className="px-3 py-1 bg-gray-800 rounded-full text-sm text-gray-400">Try: "shawarma"</span>
-          </div>
+          {/* App icon */}
+          <motion.div
+            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-6 shadow-lg shadow-purple-500/20"
+            initial={{ y: 20 }}
+            animate={{ y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </motion.div>
+
+          <motion.h2
+            className="text-xl font-semibold text-white/90 mb-2"
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            Food Finder
+          </motion.h2>
+
+          <motion.p
+            className="text-white/50 text-center text-sm mb-8 max-w-xs"
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            Tap the mic and tell me what you'd like to eat. I'll find the best prices across all delivery apps.
+          </motion.p>
+
+          {/* Suggestion chips - Siri style */}
+          <motion.div
+            className="flex flex-wrap justify-center gap-2"
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.4 }}
+          >
+            {['Pizza', 'Burger', 'Shawarma', 'Sushi'].map((item, i) => (
+              <motion.button
+                key={item}
+                onClick={() => {
+                  const { handleSearch } = require('../../hooks/useChat').default();
+                }}
+                className="px-4 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full text-sm text-white/70 hover:text-white transition-all border border-white/10"
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.5 + i * 0.1 }}
+              >
+                {item}
+              </motion.button>
+            ))}
+          </motion.div>
         </motion.div>
       )}
 
-      <AnimatePresence>
+      {/* Messages - Siri style */}
+      <AnimatePresence mode="popLayout">
         {messages.map((msg, index) => (
           <motion.div
             key={msg.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            layout
           >
             <MessageBubble
               type={msg.type}
               content={msg.content}
               timestamp={msg.timestamp}
             />
+
+            {/* Products */}
             {msg.products && msg.products.length > 0 && (
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="mt-3"
               >
                 <ProductCarousel products={msg.products} />
 
-                {/* View All button */}
+                {/* View All link */}
                 {pagination && pagination.total_products > msg.products.length && (
-                  <div className="mt-3 text-center">
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    className="mt-2 text-center"
+                  >
                     <button
                       onClick={() => handleViewAll(getSearchTermForMessage(index))}
-                      className="text-blue-400 hover:text-blue-300 text-sm font-medium"
+                      className="text-blue-400/80 hover:text-blue-400 text-xs font-medium"
                     >
-                      View all {pagination.total_products} results →
+                      View all {pagination.total_products} results
                     </button>
-                  </div>
+                  </motion.div>
                 )}
               </motion.div>
             )}

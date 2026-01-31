@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import useVoiceRecognition from '../../hooks/useVoiceRecognition';
 import useChat from '../../hooks/useChat';
 import useAIVoice from '../../hooks/useAIVoice';
 import useChatStore from '../../store/chatStore';
 
 const API_URL = import.meta.env.VITE_FETCH_API_URL || 'http://localhost:3000';
+
+// Timeout for processing state (15 seconds max)
+const PROCESSING_TIMEOUT = 15000;
 
 // Pre-translated greetings for instant response
 const GREETINGS = {
@@ -24,41 +27,91 @@ const GREETINGS = {
   tr: 'Bugün ne sipariş etmek istersiniz?'
 };
 
+// Follow-up greetings for subsequent orders
+const FOLLOWUP_GREETINGS = {
+  en: 'Wanna order anything else?',
+  ar: 'هل تريد طلب شيء آخر؟',
+  fr: 'Voulez-vous commander autre chose?',
+  es: '¿Quieres pedir algo más?',
+  de: 'Möchtest du noch etwas bestellen?',
+  it: 'Vuoi ordinare qualcos\'altro?',
+  pt: 'Quer pedir mais alguma coisa?',
+  ru: 'Хотите заказать что-нибудь еще?',
+  zh: '还要点别的吗？',
+  ja: '他に何か注文しますか？',
+  ko: '다른 것도 주문하시겠습니까?',
+  hi: 'कुछ और ऑर्डर करना चाहेंगे?',
+  tr: 'Başka bir şey sipariş etmek ister misin?'
+};
+
 const VoiceSphere = () => {
-  const { status, error, transcript, volume, start, stop } = useVoiceRecognition();
+  const { status: voiceStatus, error, transcript, volume, start, stop } = useVoiceRecognition();
   const { handleVoiceInput } = useChat();
   const { speak, isSpeaking } = useAIVoice();
-  const { language } = useChatStore();
+  const { language, sphereState, setSphereState } = useChatStore();
   const hasSpokenRef = useRef(false);
   const lastProcessedRef = useRef('');
   const [isGreeting, setIsGreeting] = useState(false);
+  const processingTimeoutRef = useRef(null);
 
-  // Get greeting in selected language
-  const getGreeting = useCallback(async () => {
-    // Use pre-translated greeting if available
-    if (GREETINGS[language]) {
-      return GREETINGS[language];
+  // Compute effective status
+  const status = voiceStatus === 'listening' ? 'listening' : sphereState;
+  const isActive = status === 'listening' || status === 'processing' || isSpeaking || isGreeting;
+
+  // Sync voice recognition status to store and add timeout protection
+  useEffect(() => {
+    if (processingTimeoutRef.current) {
+      clearTimeout(processingTimeoutRef.current);
+      processingTimeoutRef.current = null;
     }
 
-    // Otherwise fetch from backend
+    if (voiceStatus === 'listening') {
+      setSphereState('listening');
+    } else if (voiceStatus === 'processing') {
+      setSphereState('processing');
+      processingTimeoutRef.current = setTimeout(() => {
+        console.warn('Processing timeout - resetting to idle');
+        setSphereState('idle');
+      }, PROCESSING_TIMEOUT);
+    } else if (voiceStatus === 'error') {
+      setSphereState('error');
+    }
+
+    return () => {
+      if (processingTimeoutRef.current) {
+        clearTimeout(processingTimeoutRef.current);
+      }
+    };
+  }, [voiceStatus, setSphereState]);
+
+  // Get greeting in selected language
+  const getGreeting = useCallback(async (isFollowUp = false) => {
+    const greetings = isFollowUp ? FOLLOWUP_GREETINGS : GREETINGS;
+    if (greetings[language]) {
+      return greetings[language];
+    }
+
     try {
       const response = await fetch(`${API_URL}/translate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'greeting', language })
+        body: JSON.stringify({
+          type: isFollowUp ? 'followup' : 'greeting',
+          language,
+          text: isFollowUp ? 'Wanna order anything else?' : undefined
+        })
       });
       const result = await response.json();
-      return result.translated || GREETINGS.en;
+      return result.translated || greetings.en;
     } catch {
-      return GREETINGS.en;
+      return greetings.en;
     }
   }, [language]);
 
-  // When a final transcript is ready, send it to the chat handler (only once)
+  // When a final transcript is ready, send it to the chat handler
   useEffect(() => {
     if (transcript.final && transcript.final !== lastProcessedRef.current) {
       lastProcessedRef.current = transcript.final;
-      // Pass the detected language along with the transcript
       handleVoiceInput(transcript.final, transcript.language || 'en');
     }
   }, [transcript.final, transcript.language, handleVoiceInput]);
@@ -66,183 +119,198 @@ const VoiceSphere = () => {
   const handleClick = async () => {
     if (status === 'listening' || status === 'processing' || isGreeting) {
       stop();
+      setSphereState('idle');
       return;
     }
 
-    // First time: speak greeting, then start recording
-    if (!hasSpokenRef.current) {
-      hasSpokenRef.current = true;
-      setIsGreeting(true);
-
-      // Get and speak greeting in selected language
-      const greeting = await getGreeting();
-      await speak(greeting);
-
-      setIsGreeting(false);
-      // Now start recording after greeting is done
-      await start();
-    } else {
-      // Subsequent clicks: just start recording
-      await start();
+    if (processingTimeoutRef.current) {
+      clearTimeout(processingTimeoutRef.current);
+      processingTimeoutRef.current = null;
     }
+
+    setIsGreeting(true);
+
+    const isFollowUp = hasSpokenRef.current;
+    hasSpokenRef.current = true;
+
+    const greeting = await getGreeting(isFollowUp);
+    await speak(greeting);
+
+    setIsGreeting(false);
+    await start();
   };
 
-  const getStateStyles = () => {
-    // AI is speaking
+  // Siri-like gradient colors based on state
+  const getGradientColors = () => {
     if (isSpeaking || isGreeting) {
-      return {
-        background: 'linear-gradient(135deg, #10b981 0%, #3b82f6 50%, #8b5cf6 100%)',
-        boxShadow: '0 0 60px rgba(16, 185, 129, 0.6), 0 0 100px rgba(59, 130, 246, 0.4)'
-      };
+      return ['#22c55e', '#3b82f6', '#8b5cf6', '#22c55e'];
     }
-
-    switch (status) {
-      case 'listening':
-        return {
-          background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%)',
-          boxShadow: `0 0 60px rgba(59, 130, 246, 0.6), 0 0 100px rgba(139, 92, 246, 0.4), 0 0 120px rgba(236, 72, 153, ${volume * 0.5})`
-        };
-      case 'processing':
-      case 'model_loading':
-        return {
-          background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 50%, #f59e0b 100%)',
-          boxShadow: '0 0 60px rgba(139, 92, 246, 0.6), 0 0 100px rgba(236, 72, 153, 0.4)'
-        };
-      case 'error':
-        return {
-          background: 'linear-gradient(135deg, #ef4444 0%, #f97316 100%)',
-          boxShadow: '0 0 60px rgba(239, 68, 68, 0.6)'
-        };
-      default: // idle
-        return {
-          background: 'linear-gradient(135deg, #1e3a5f 0%, #3b82f6 50%, #8b5cf6 100%)',
-          boxShadow: '0 0 40px rgba(59, 130, 246, 0.3), 0 0 80px rgba(139, 92, 246, 0.2)'
-        };
+    if (status === 'listening') {
+      return ['#3b82f6', '#8b5cf6', '#ec4899', '#3b82f6'];
     }
-  };
-  
-  const getAnimation = () => {
-    // AI is speaking - pulsing animation
-    if (isSpeaking || isGreeting) {
-      return {
-        scale: [1, 1.08, 1],
-        transition: { duration: 0.8, repeat: Infinity, ease: 'easeInOut' }
-      };
+    if (status === 'processing') {
+      return ['#8b5cf6', '#ec4899', '#f59e0b', '#8b5cf6'];
     }
-
-    switch (status) {
-      case 'listening':
-        return {
-          scale: 1 + (volume * 0.15),
-          transition: { type: 'spring', stiffness: 400, damping: 10 }
-        };
-      case 'processing':
-      case 'model_loading':
-        return {
-          rotate: [0, 360],
-          scale: [1, 1.05, 1],
-          transition: {
-            rotate: { duration: 1.5, repeat: Infinity, ease: 'linear' },
-            scale: { duration: 1, repeat: Infinity, ease: 'easeInOut' }
-          }
-        };
-      case 'error':
-        return {
-          x: [-2, 2, -2, 2, 0],
-          transition: { duration: 0.4 }
-        };
-      default: // idle
-        return {
-          scale: [1, 1.02, 1],
-          transition: { duration: 4, repeat: Infinity, ease: 'easeInOut' }
-        };
+    if (status === 'error') {
+      return ['#ef4444', '#f97316', '#ef4444', '#f97316'];
     }
+    // Idle - subtle blue/purple
+    return ['#1e40af', '#3b82f6', '#8b5cf6', '#1e40af'];
   };
 
-  const getStatusText = () => {
-      // AI is speaking
-      if (isSpeaking || isGreeting) return 'Speaking...';
-
-      switch(status) {
-        case 'idle': return 'Tap to speak';
-        case 'listening': return 'Listening...';
-        case 'processing': return 'Processing...';
-        case 'model_loading': return 'Loading speech model...';
-        case 'error': return error || 'An error occurred. Tap to try again.';
-        default: return '';
-      }
-  }
+  const colors = getGradientColors();
 
   return (
-    <div className="relative flex flex-col items-center" style={{ minHeight: '250px' }}>
-      <div className="absolute inset-0 flex items-center justify-center">
-        {/* Animated outer glows */}
-      </div>
-
+    <div className="flex flex-col items-center">
+      {/* Floating Siri-like blob */}
       <motion.div
-        className="w-40 h-40 rounded-full cursor-pointer relative z-10 flex items-center justify-center text-white"
-        style={getStateStyles()}
-        animate={getAnimation()}
+        className="relative cursor-pointer"
         onClick={handleClick}
-        whileHover={{ scale: status === 'idle' ? 1.05 : 1 }}
-        whileTap={{ scale: status === 'idle' ? 0.95 : 1 }}
+        animate={{
+          scale: isActive ? 1.15 : 1,
+        }}
+        whileHover={{ scale: isActive ? 1.15 : 1.08 }}
+        whileTap={{ scale: 0.95 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 20 }}
       >
-        <div
-          className="absolute w-32 h-32 rounded-full opacity-30"
-          style={{ background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4) 0%, transparent S60%)' }}
+        {/* Outer glow */}
+        <motion.div
+          className="absolute inset-0 rounded-full blur-xl"
+          style={{
+            background: `linear-gradient(135deg, ${colors[0]}, ${colors[1]}, ${colors[2]})`,
+          }}
+          animate={{
+            opacity: isActive ? 0.6 : 0.3,
+            scale: isActive ? 1.3 : 1,
+          }}
+          transition={{ duration: 0.3 }}
         />
 
-        {/* AI Speaking indicator */}
-        {(isSpeaking || isGreeting) && (
-          <svg className="w-12 h-12 opacity-80" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-          </svg>
-        )}
+        {/* Main sphere - Siri style */}
+        <motion.div
+          className="relative w-16 h-16 rounded-full overflow-hidden"
+          style={{
+            background: `linear-gradient(135deg, ${colors[0]}, ${colors[1]}, ${colors[2]}, ${colors[3]})`,
+            backgroundSize: '300% 300%',
+          }}
+          animate={{
+            backgroundPosition: isActive ? ['0% 50%', '100% 50%', '0% 50%'] : '50% 50%',
+          }}
+          transition={{
+            backgroundPosition: {
+              duration: 3,
+              repeat: Infinity,
+              ease: 'linear',
+            },
+          }}
+        >
+          {/* Inner highlight */}
+          <div
+            className="absolute inset-0 rounded-full"
+            style={{
+              background: 'radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3) 0%, transparent 50%)',
+            }}
+          />
 
-        {status === 'listening' && !isSpeaking && !isGreeting && (
-             <div className="w-16 h-16 flex items-center justify-center">
-                 <motion.div
-                     className="w-full h-full bg-white/20 rounded-full"
-                     animate={{ scale: [1, 1 + volume * 0.5, 1] }}
-                     transition={{ duration: 0.4, repeat: Infinity, ease: 'easeInOut' }}
-                 />
-            </div>
-        )}
-
-        {(status === 'processing' || status === 'model_loading') && !isSpeaking && !isGreeting && (
+          {/* Animated waves for listening */}
+          {status === 'listening' && (
             <motion.div
-              className="w-12 h-12 border-4 border-white/30 border-t-white/80 rounded-full"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-            />
-        )}
+              className="absolute inset-0 flex items-center justify-center"
+              animate={{ scale: [1, 1 + volume * 0.3, 1] }}
+              transition={{ duration: 0.15 }}
+            >
+              <div className="w-8 h-8 rounded-full bg-white/20" />
+            </motion.div>
+          )}
 
-        {(status === 'idle' || status === 'error') && !isSpeaking && !isGreeting && (
-          <svg className="w-12 h-12 opacity-80" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93h2c0 3.31 2.69 6 6 6s6-2.69 6-6h2c0 4.08-3.06 7.44-7 7.93V19h3v2H9v-2h3v-3.07z"/>
-          </svg>
-        )}
+          {/* Processing spinner */}
+          {status === 'processing' && !isSpeaking && !isGreeting && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <motion.div
+                className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
+              />
+            </div>
+          )}
+
+          {/* Speaking waves */}
+          {(isSpeaking || isGreeting) && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <motion.div
+                className="flex items-end justify-center gap-0.5 h-6"
+                animate={{ opacity: 1 }}
+              >
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <motion.div
+                    key={i}
+                    className="w-1 bg-white/80 rounded-full"
+                    animate={{ height: ['8px', '20px', '8px'] }}
+                    transition={{
+                      duration: 0.5,
+                      repeat: Infinity,
+                      delay: i * 0.1,
+                      ease: 'easeInOut',
+                    }}
+                  />
+                ))}
+              </motion.div>
+            </div>
+          )}
+
+          {/* Idle microphone icon */}
+          {status === 'idle' && !isSpeaking && !isGreeting && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <svg className="w-6 h-6 text-white/90" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93h2c0 3.31 2.69 6 6 6s6-2.69 6-6h2c0 4.08-3.06 7.44-7 7.93V19h3v2H9v-2h3v-3.07z" />
+              </svg>
+            </div>
+          )}
+
+          {/* Error icon */}
+          {status === 'error' && !isSpeaking && !isGreeting && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <svg className="w-6 h-6 text-white/90" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+              </svg>
+            </div>
+          )}
+        </motion.div>
       </motion.div>
 
-      <motion.p
-        className="mt-6 text-gray-400 text-sm font-medium h-5 text-center"
-        key={status}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-      >
-        {getStatusText()}
-      </motion.p>
+      {/* Status text - only show when active */}
+      <AnimatePresence>
+        {isActive && (
+          <motion.p
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -5 }}
+            className="mt-3 text-white/70 text-xs font-medium"
+          >
+            {isSpeaking || isGreeting
+              ? 'Speaking...'
+              : status === 'listening'
+              ? 'Listening...'
+              : status === 'processing'
+              ? 'Processing...'
+              : ''}
+          </motion.p>
+        )}
+      </AnimatePresence>
 
-      {status === 'listening' && transcript.interim && (
-        <motion.p
-          className="mt-2 text-gray-300 text-base max-w-xs text-center h-6"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-        >
-          "{transcript.interim}"
-        </motion.p>
-      )}
+      {/* Transcript preview */}
+      <AnimatePresence>
+        {status === 'listening' && transcript.interim && (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="mt-2 text-white/60 text-sm max-w-[200px] text-center truncate"
+          >
+            "{transcript.interim}"
+          </motion.p>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
