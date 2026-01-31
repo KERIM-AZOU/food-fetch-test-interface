@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_FETCH_API_URL || 'http://localhost:3000';
 
 /**
  * Hook for AI-powered text-to-speech using ElevenLabs

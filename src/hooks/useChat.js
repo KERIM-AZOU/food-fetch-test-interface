@@ -3,7 +3,7 @@ import useChatStore from '../store/chatStore';
 import { search } from '../services/api';
 import useAIVoice from './useAIVoice';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_FETCH_API_URL || 'http://localhost:3000';
 
 // Translate text using backend
 async function translateText(text, language) {

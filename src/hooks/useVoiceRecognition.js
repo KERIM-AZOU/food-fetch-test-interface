@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_FETCH_API_URL || 'http://localhost:3000';
 
 // Audio settings
 const NOISE_THRESHOLD = 0.08; // Ignore sounds below this level (0-1)
