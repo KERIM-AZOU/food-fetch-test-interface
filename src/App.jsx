@@ -36,7 +36,7 @@ function HomePage() {
   const hasMessages = messages.length > 0;
 
   return (
-    <div className="bg-black text-white min-h-screen flex flex-col relative overflow-hidden">
+    <div className="bg-black text-white min-h-screen flex flex-col relative overflow-x-hidden overflow-y-scroll">
       {/* Siri-like gradient background */}
       <div className="absolute inset-0 bg-gradient-to-b from-gray-900 via-black to-black" />
 
@@ -63,7 +63,7 @@ function HomePage() {
       </div>
 
       {/* Header - minimal Siri style */}
-      <header className="relative z-50 p-4 flex items-center justify-between">
+      <header className="fixed top-0 left-0 right-0 z-50 p-4 flex items-center justify-between">
         <button
           onClick={() => setShowFilters(!showFilters)}
           className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
@@ -87,7 +87,7 @@ function HomePage() {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="relative z-10 overflow-hidden"
+            className="relative top-20 z-50 overflow-hidden"
           >
             <div className="px-4 pb-4">
               <FilterChips />
@@ -97,7 +97,7 @@ function HomePage() {
       </AnimatePresence>
 
       {/* Main chat area - takes up most of the screen */}
-      <div className="flex-1 relative z-10 flex flex-col min-h-0">
+      <div className="flex-1 relative top-20 z-10 flex flex-col min-h-0">
         <div className="flex-1 overflow-y-auto">
           <ChatWindow />
         </div>
