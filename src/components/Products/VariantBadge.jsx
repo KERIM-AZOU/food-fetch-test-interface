@@ -31,12 +31,12 @@ const VariantBadge = ({ platform, isLowest }) => {
 
   return (
     <span
-      className={`px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs font-bold text-white rounded sm:rounded-md ${styles.bg} ${
-        isLowest ? 'ring-1 sm:ring-2 ring-green-400 ring-offset-1 ring-offset-gray-800' : ''
+      className={`px-2 py-1 text-xs font-bold text-white rounded-md ${styles.bg} ${
+        isLowest ? 'ring-2 ring-green-400 ring-offset-1 ring-offset-gray-800' : ''
       }`}
     >
       {styles.text}
-      {isLowest && <span className="ml-0.5 sm:ml-1">★</span>}
+      {isLowest && <span className="ml-1">★</span>}
     </span>
   );
 };
