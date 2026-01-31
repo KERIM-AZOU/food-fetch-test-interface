@@ -58,7 +58,8 @@ const ResultsPage = () => {
 
   const handlePageChange = (newPage) => {
     setSearchParams({ q: query, page: newPage.toString() });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Scroll the main content container to top
+    document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSearch = (e) => {
@@ -139,14 +140,14 @@ const ResultsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-gray-900/95 backdrop-blur border-b border-gray-800">
+    <div className="h-screen h-[100dvh] bg-gradient-to-b from-gray-900 to-black text-white flex flex-col overflow-hidden">
+      {/* Header - fixed at top */}
+      <header className="flex-shrink-0 z-50 bg-gray-900/95 backdrop-blur border-b border-gray-800">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate('/')}
-              className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-800 rounded-lg transition-colors flex-shrink-0"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -175,14 +176,15 @@ const ResultsPage = () => {
           </div>
 
           {/* Filters */}
-          <div className="mt-4">
+          <div className="mt-4 overflow-x-auto">
             <FilterChips />
           </div>
         </div>
       </header>
 
-      {/* Main content */}
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      {/* Main content - scrollable */}
+      <main className="flex-1 overflow-y-auto">
+        <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Results info */}
         {pagination && (
           <div className="mb-6 flex items-center justify-between">
@@ -236,6 +238,7 @@ const ResultsPage = () => {
 
         {/* Pagination */}
         {renderPagination()}
+        </div>
       </main>
     </div>
   );

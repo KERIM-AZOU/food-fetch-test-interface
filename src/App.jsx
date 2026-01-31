@@ -36,7 +36,7 @@ function HomePage() {
   const hasMessages = messages.length > 0;
 
   return (
-    <div className="bg-black text-white min-h-screen flex flex-col relative">
+    <div className="bg-black text-white h-screen h-[100dvh] flex flex-col overflow-hidden relative">
       {/* Siri-like gradient background */}
       <div className="absolute inset-0 bg-gradient-to-b from-gray-900 via-black to-black" />
       {/* Animated background blur effect */}
@@ -60,8 +60,9 @@ function HomePage() {
           transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
         />
       </div>
-      {/* Header - minimal Siri style */}
-      <header className="relative z-50 p-4 flex items-center justify-between">
+
+      {/* Header - fixed at top */}
+      <header className="relative z-50 p-4 flex items-center justify-between flex-shrink-0">
         <button
           onClick={() => setShowFilters(!showFilters)}
           className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
@@ -77,6 +78,7 @@ function HomePage() {
 
         <LanguageSelector />
       </header>
+
       {/* Filters panel - slides down */}
       <AnimatePresence>
         {showFilters && (
@@ -84,7 +86,7 @@ function HomePage() {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="relative top-20 z-50 overflow-hidden"
+            className="relative z-50 overflow-hidden flex-shrink-0"
           >
             <div className="px-4 pb-4">
               <FilterChips />
@@ -93,8 +95,8 @@ function HomePage() {
         )}
       </AnimatePresence>
 
-      {/* Main chat area - takes up most of the screen */}
-      <div className="flex-1 relative top-20 z-10 flex flex-col min-h-0">
+      {/* Main chat area - scrollable middle section */}
+      <div className="flex-1 relative z-10 flex flex-col min-h-0 overflow-hidden">
         <div className="flex-1 overflow-y-auto">
           <ChatWindow />
         </div>
@@ -106,7 +108,7 @@ function HomePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="px-4 py-2 text-center"
+              className="px-4 py-2 text-center flex-shrink-0"
             >
               <button
                 onClick={handleViewAllResults}
@@ -119,8 +121,8 @@ function HomePage() {
         </AnimatePresence>
       </div>
 
-      {/* Bottom area with floating sphere and input */}
-      <div className="relative z-10 pb-6">
+      {/* Bottom area with floating sphere and input - fixed at bottom */}
+      <div className="relative z-10 pb-6 flex-shrink-0 bg-gradient-to-t from-black via-black/80 to-transparent pt-4">
         {/* Floating Voice Sphere */}
         <div className="flex justify-center py-4">
           <VoiceSphere />
@@ -148,10 +150,10 @@ function HomePage() {
             </button>
           </div>
         </form>
-      </div>
 
-      {/* Safe area for iOS */}
-      <div className="h-safe-area-inset-bottom" />
+        {/* Safe area for iOS */}
+        <div className="h-safe-area-inset-bottom" />
+      </div>
     </div>
   );
 }
