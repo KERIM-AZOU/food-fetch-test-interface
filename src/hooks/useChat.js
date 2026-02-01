@@ -63,7 +63,7 @@ const useChat = () => {
       const count = result.products?.length || 0;
       const total = result.pagination?.total_products || count;
       const resultMessage = count > 0
-        ? `Found ${total} results for ${term}`
+        ? `Found results for ${term}`
         : `No results found for ${term}. Try a different search term.`;
 
       // Speak and add message
