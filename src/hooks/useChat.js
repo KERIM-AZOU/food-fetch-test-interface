@@ -1,93 +1,86 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import useChatStore from '../store/chatStore';
 import { search } from '../services/api';
 import useAIVoice from './useAIVoice';
 
 const API_URL = import.meta.env.VITE_FETCH_API_URL || 'http://localhost:3000';
 
-// Translate text using backend
-async function translateText(text, language) {
-  if (language === 'en') return text;
-
-  try {
-    const response = await fetch(`${API_URL}/translate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, language })
-    });
-    const result = await response.json();
-    return result.translated || text;
-  } catch {
-    return text;
-  }
-}
-
 const useChat = () => {
   const { speak } = useAIVoice();
+  const abortRef = useRef(null);
+
   const {
-    messages,
-    language: storeLanguage,
-    setLanguage: setStoreLanguage,
     addMessage: addMessageToStore,
     setLastResults,
     setPagination,
     setAllRestaurants,
     setIsLoading,
     setSphereState,
+    setLanguage: setStoreLanguage,
     getSearchParams,
   } = useChatStore();
 
-  // Wrapper for addMessage to also speak bot messages
+  // Cancel any pending request
+  const cancelPending = useCallback(() => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
+  }, []);
+
+  // Add message with optional TTS
   const addMessage = useCallback((message, shouldSpeak = true) => {
     addMessageToStore(message);
     if (shouldSpeak && (message.type === 'bot' || message.type === 'error')) {
-      const textToSpeak = message.content.replace(/\*\*/g, '');
-      speak(textToSpeak);
+      speak(message.content.replace(/\*\*/g, ''));
     }
   }, [addMessageToStore, speak]);
 
+  // Text search
   const handleSearch = useCallback(async (term) => {
+    cancelPending();
+
     addMessage({ type: 'user', content: term });
     setIsLoading(true);
     setSphereState('processing');
+
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     try {
       const params = getSearchParams();
       const result = await search({ term, ...params });
 
+      if (controller.signal.aborted) return;
+
       setLastResults(result.products || []);
       setPagination(result.pagination || null);
       setAllRestaurants(result.all_restaurants || []);
 
-      const productCount = result.products?.length || 0;
-      if (productCount > 0) {
-        addMessage({
-          type: 'bot',
-          content: `Found ${result.pagination?.total_products || productCount} results for "${term}"`,
-          products: result.products
-        });
-      } else {
-        addMessage({
-          type: 'bot',
-          content: `No results found for "${term}". Try a different search term.`
-        });
-      }
+      const count = result.products?.length || 0;
+      addMessage({
+        type: 'bot',
+        content: count > 0
+          ? `Found ${result.pagination?.total_products || count} results for "${term}"`
+          : `No results found for "${term}". Try a different search term.`,
+        products: count > 0 ? result.products : undefined
+      });
 
       setSphereState('idle');
     } catch (error) {
+      if (error.name === 'AbortError') return;
+
       console.error('Search error:', error);
-      addMessage({
-        type: 'error',
-        content: 'Sorry, I had trouble searching. Please try again.'
-      });
+      addMessage({ type: 'error', content: 'Sorry, I had trouble searching. Please try again.' });
       setSphereState('error');
-      // Auto-reset to idle after showing error briefly
       setTimeout(() => setSphereState('idle'), 3000);
     } finally {
       setIsLoading(false);
+      abortRef.current = null;
     }
-  }, [addMessage, setIsLoading, setSphereState, getSearchParams, setLastResults, setPagination, setAllRestaurants]);
+  }, [cancelPending, addMessage, setIsLoading, setSphereState, getSearchParams, setLastResults, setPagination, setAllRestaurants]);
 
+  // Voice input
   const handleVoiceInput = useCallback(async (voiceText, detectedLanguage = 'en') => {
     const rawText = voiceText.trim();
     if (!rawText) {
@@ -95,93 +88,93 @@ const useChat = () => {
       return;
     }
 
+    cancelPending();
     setIsLoading(true);
     setSphereState('processing');
 
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
-      // Extract keywords using the backend (pass detected language)
       const params = getSearchParams();
-      const processResponse = await fetch(`${API_URL}/process-voice`, {
+
+      // Extract keywords
+      const processRes = await fetch(`${API_URL}/process-voice`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: rawText,
-          language: detectedLanguage, // Pass the detected language
+          language: detectedLanguage,
           lat: params.lat,
-          lon: params.lon,
-          validate: false
+          lon: params.lon
         }),
+        signal: controller.signal
       });
 
-      const processResult = await processResponse.json();
+      if (controller.signal.aborted) return;
+
+      const processResult = await processRes.json();
+
+      // Handle non-food requests
+      if (processResult.not_food_related) {
+        await speak(processResult.search_message);
+        addMessage({ type: 'bot', content: processResult.search_message }, false);
+        setSphereState('idle');
+        setIsLoading(false);
+        return;
+      }
+
       const searchQuery = processResult.search_query || rawText;
       const searchMessage = processResult.search_message || `Searching for ${searchQuery}`;
 
-      console.log('Extracted keywords:', searchQuery, '| Language:', detectedLanguage);
-
-      // Announce what we're searching for (in user's language)
+      // Announce search
       await speak(searchMessage);
+      if (controller.signal.aborted) return;
 
-      // Add user message with extracted query (don't speak it)
       addMessage({ type: 'user', content: searchQuery }, false);
 
-      // Search with extracted keywords
+      // Search
       const result = await search({ term: searchQuery, ...params });
+      if (controller.signal.aborted) return;
 
       setLastResults(result.products || []);
       setPagination(result.pagination || null);
       setAllRestaurants(result.all_restaurants || []);
 
-      const productCount = result.products?.length || 0;
-
-      // Store the detected language for future use
+      // Update language if detected
       if (detectedLanguage !== 'en') {
         setStoreLanguage(detectedLanguage);
       }
 
-      // Generate result message in user's language
-      if (productCount > 0) {
-        const totalResults = result.pagination?.total_products || productCount;
-        const resultMessage = await translateText(
-          `Found ${totalResults} results for ${searchQuery}`,
-          detectedLanguage
-        );
-        addMessage({
-          type: 'bot',
-          content: resultMessage,
-          products: result.products
-        });
-      } else {
-        const noResultMessage = await translateText(
-          `No results found for ${searchQuery}. Try something else!`,
-          detectedLanguage
-        );
-        addMessage({
-          type: 'bot',
-          content: noResultMessage
-        });
-      }
+      const count = result.products?.length || 0;
+      const total = result.pagination?.total_products || count;
+
+      // Simple result message (no extra translation call)
+      const resultMessage = count > 0
+        ? `Found ${total} results`
+        : 'No results found. Try something else!';
+
+      addMessage({
+        type: 'bot',
+        content: resultMessage,
+        products: count > 0 ? result.products : undefined
+      });
 
       setSphereState('idle');
     } catch (error) {
+      if (error.name === 'AbortError') return;
+
       console.error('Voice input error:', error);
-      addMessage({
-        type: 'error',
-        content: 'Sorry, I had trouble processing that. Please try again.'
-      });
+      addMessage({ type: 'error', content: 'Sorry, something went wrong. Please try again.' });
       setSphereState('error');
-      // Auto-reset to idle after showing error briefly
       setTimeout(() => setSphereState('idle'), 3000);
     } finally {
       setIsLoading(false);
+      abortRef.current = null;
     }
-  }, [addMessage, setIsLoading, setSphereState, getSearchParams, setLastResults, setPagination, setAllRestaurants, speak]);
+  }, [cancelPending, addMessage, setIsLoading, setSphereState, getSearchParams, setLastResults, setPagination, setAllRestaurants, speak, setStoreLanguage]);
 
-  return {
-    messages,
-    handleSearch,
-    handleVoiceInput
-  };
+  return { handleSearch, handleVoiceInput };
 };
 
 export default useChat;

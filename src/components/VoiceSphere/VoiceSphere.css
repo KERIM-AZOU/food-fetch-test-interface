@@ -1,0 +1,227 @@
+.voice-sphere-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.voice-sphere {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (min-width: 640px) {
+  .voice-sphere {
+    width: 64px;
+    height: 64px;
+  }
+}
+
+.voice-sphere:hover {
+  transform: scale(1.05);
+}
+
+.voice-sphere:active {
+  transform: scale(0.95);
+}
+
+/* Glow effect */
+.sphere-glow {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  opacity: 0.4;
+  filter: blur(12px);
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+
+.voice-sphere.idle .sphere-glow {
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+}
+
+.voice-sphere.listening .sphere-glow {
+  background: linear-gradient(135deg, #3b82f6, #ec4899);
+  opacity: 0.6;
+  animation: pulse-glow 1.5s ease-in-out infinite;
+}
+
+.voice-sphere.processing .sphere-glow {
+  background: linear-gradient(135deg, #8b5cf6, #f59e0b);
+  opacity: 0.5;
+}
+
+.voice-sphere.speaking .sphere-glow {
+  background: linear-gradient(135deg, #22c55e, #3b82f6);
+  opacity: 0.6;
+  animation: pulse-glow 1s ease-in-out infinite;
+}
+
+.voice-sphere.error .sphere-glow {
+  background: linear-gradient(135deg, #ef4444, #f97316);
+  opacity: 0.5;
+}
+
+/* Main sphere */
+.sphere-main {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.voice-sphere.idle .sphere-main {
+  background: linear-gradient(135deg, #1e40af, #3b82f6, #8b5cf6);
+}
+
+.voice-sphere.listening .sphere-main {
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899);
+  animation: gradient-shift 3s linear infinite;
+  background-size: 200% 200%;
+}
+
+.voice-sphere.processing .sphere-main {
+  background: linear-gradient(135deg, #8b5cf6, #ec4899, #f59e0b);
+}
+
+.voice-sphere.speaking .sphere-main {
+  background: linear-gradient(135deg, #22c55e, #3b82f6, #8b5cf6);
+  animation: gradient-shift 2s linear infinite;
+  background-size: 200% 200%;
+}
+
+.voice-sphere.error .sphere-main {
+  background: linear-gradient(135deg, #ef4444, #f97316);
+}
+
+/* Mic icon */
+.sphere-icon {
+  width: 24px;
+  height: 24px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+@media (min-width: 640px) {
+  .sphere-icon {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+.error-icon {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Listening rings */
+.listening-indicator {
+  position: relative;
+  width: 32px;
+  height: 32px;
+}
+
+.ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  animation: ring-pulse 1.5s ease-out infinite;
+}
+
+.ring-1 { animation-delay: 0s; }
+.ring-2 { animation-delay: 0.3s; }
+.ring-3 { animation-delay: 0.6s; }
+
+/* Processing spinner */
+.processing-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Speaking bars */
+.speaking-bars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  height: 24px;
+}
+
+.speaking-bars span {
+  width: 4px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 2px;
+  animation: bar-bounce 0.5s ease-in-out infinite alternate;
+}
+
+.speaking-bars span:nth-child(1) { animation-delay: 0s; height: 8px; }
+.speaking-bars span:nth-child(2) { animation-delay: 0.1s; height: 16px; }
+.speaking-bars span:nth-child(3) { animation-delay: 0.2s; height: 12px; }
+.speaking-bars span:nth-child(4) { animation-delay: 0.1s; height: 18px; }
+.speaking-bars span:nth-child(5) { animation-delay: 0s; height: 10px; }
+
+/* Status text */
+.status-text {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+  animation: fade-in 0.2s ease;
+}
+
+@media (min-width: 640px) {
+  .status-text {
+    font-size: 12px;
+  }
+}
+
+/* Animations */
+@keyframes pulse-glow {
+  0%, 100% { transform: scale(1); opacity: 0.4; }
+  50% { transform: scale(1.15); opacity: 0.6; }
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes ring-pulse {
+  0% {
+    transform: scale(0.5);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes bar-bounce {
+  from { transform: scaleY(0.5); }
+  to { transform: scaleY(1.2); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}

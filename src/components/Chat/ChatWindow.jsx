@@ -1,5 +1,4 @@
-import React, { useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useChatStore from '../../store/chatStore';
 import MessageBubble from './MessageBubble';
@@ -27,118 +26,67 @@ const ChatWindow = () => {
     return '';
   };
 
-  return (
-    <div className="flex-grow p-3 sm:p-4 space-y-2 sm:space-y-3">
-      {/* Empty state - Siri style */}
-      {messages.length === 0 && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="flex flex-col items-center justify-center py-10 sm:py-16 px-4"
-        >
-          {/* App icon */}
-          <motion.div
-            className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-4 sm:mb-6 shadow-lg shadow-purple-500/20"
-            initial={{ y: 20 }}
-            animate={{ y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
+  // Empty state
+  if (messages.length === 0) {
+    return (
+      <div className="flex-grow p-3 sm:p-4">
+        <div className="flex flex-col items-center justify-center py-10 sm:py-16 px-4 animate-fade-in">
+          <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-4 sm:mb-6 shadow-lg shadow-purple-500/20">
             <svg className="w-7 h-7 sm:w-10 sm:h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-          </motion.div>
+          </div>
 
-          <motion.h2
-            className="text-lg sm:text-xl font-semibold text-white/90 mb-1.5 sm:mb-2"
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-          >
+          <h2 className="text-lg sm:text-xl font-semibold text-white/90 mb-1.5 sm:mb-2">
             Food Finder
-          </motion.h2>
+          </h2>
 
-          <motion.p
-            className="text-white/50 text-center text-xs sm:text-sm mb-6 sm:mb-8 max-w-xs"
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.3 }}
-          >
+          <p className="text-white/50 text-center text-xs sm:text-sm mb-6 sm:mb-8 max-w-xs">
             Tap the mic and tell me what you'd like to eat. I'll find the best prices across all delivery apps.
-          </motion.p>
+          </p>
 
-          {/* Suggestion chips - Siri style */}
-          <motion.div
-            className="flex flex-wrap justify-center gap-1.5 sm:gap-2"
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.4 }}
-          >
-            {['Pizza', 'Burger', 'Shawarma', 'Sushi'].map((item, i) => (
-              <motion.button
+          <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
+            {['Pizza', 'Burger', 'Shawarma', 'Sushi'].map((item) => (
+              <span
                 key={item}
-                onClick={() => {
-                  const { handleSearch } = require('../../hooks/useChat').default();
-                }}
-                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full text-xs sm:text-sm text-white/70 hover:text-white transition-all border border-white/10"
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.5 + i * 0.1 }}
+                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-white/10 backdrop-blur-sm rounded-full text-xs sm:text-sm text-white/70 border border-white/10"
               >
                 {item}
-              </motion.button>
+              </span>
             ))}
-          </motion.div>
-        </motion.div>
-      )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-      {/* Messages - Siri style */}
-      <AnimatePresence mode="popLayout">
-        {messages.map((msg, index) => (
-          <motion.div
-            key={msg.id}
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-            layout
-          >
-            <MessageBubble
-              type={msg.type}
-              content={msg.content}
-              timestamp={msg.timestamp}
-            />
+  return (
+    <div className="flex-grow p-3 sm:p-4 space-y-2 sm:space-y-3">
+      {messages.map((msg, index) => (
+        <div key={msg.id} className="animate-slide-up">
+          <MessageBubble
+            type={msg.type}
+            content={msg.content}
+          />
 
-            {/* Products */}
-            {msg.products && msg.products.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="mt-3"
-              >
-                <ProductCarousel products={msg.products} />
+          {msg.products && msg.products.length > 0 && (
+            <div className="mt-3">
+              <ProductCarousel products={msg.products} />
 
-                {/* View All link */}
-                {pagination && pagination.total_products > msg.products.length && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.2 }}
-                    className="mt-2 text-center"
+              {pagination && pagination.total_products > msg.products.length && (
+                <div className="mt-2 text-center">
+                  <button
+                    onClick={() => handleViewAll(getSearchTermForMessage(index))}
+                    className="text-blue-400/80 hover:text-blue-400 text-xs font-medium transition-colors"
                   >
-                    <button
-                      onClick={() => handleViewAll(getSearchTermForMessage(index))}
-                      className="text-blue-400/80 hover:text-blue-400 text-xs font-medium"
-                    >
-                      View all {pagination.total_products} results
-                    </button>
-                  </motion.div>
-                )}
-              </motion.div>
-            )}
-          </motion.div>
-        ))}
-      </AnimatePresence>
+                    View all {pagination.total_products} results
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
 
       <div ref={chatEndRef} />
     </div>

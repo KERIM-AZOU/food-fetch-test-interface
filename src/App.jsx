@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
 import VoiceSphere from './components/VoiceSphere/VoiceSphere';
 import ChatWindow from './components/Chat/ChatWindow';
 import FilterChips from './components/Filters/FilterChips';
@@ -9,7 +8,7 @@ import ResultsPage from './pages/ResultsPage';
 import useChat from './hooks/useChat';
 import useChatStore from './store/chatStore';
 
-// Apply base styles via JS to avoid CSS caching issues
+// Base styles
 if (typeof document !== 'undefined') {
   const style = document.createElement('style');
   style.textContent = `
@@ -55,31 +54,10 @@ function HomePage() {
 
   return (
     <div className="bg-black text-white fixed inset-0 overflow-hidden">
-      {/* Siri-like gradient background */}
+      {/* Simple gradient background */}
       <div className="absolute inset-0 bg-gradient-to-b from-gray-900 via-black to-black" />
-      {/* Animated background blur effect */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          className="absolute -top-1/2 -left-1/2 w-full h-full rounded-full opacity-20 blur-3xl"
-          style={{ background: 'radial-gradient(circle, #3b82f6 0%, transparent 70%)' }}
-          animate={{
-            x: [0, 100, 0],
-            y: [0, 50, 0],
-          }}
-          transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
-        />
-        <motion.div
-          className="absolute -bottom-1/2 -right-1/2 w-full h-full rounded-full opacity-20 blur-3xl"
-          style={{ background: 'radial-gradient(circle, #8b5cf6 0%, transparent 70%)' }}
-          animate={{
-            x: [0, -100, 0],
-            y: [0, -50, 0],
-          }}
-          transition={{ duration: 25, repeat: Infinity, ease: 'linear' }}
-        />
-      </div>
 
-      {/* Header - fixed at top */}
+      {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 p-3 sm:p-4 flex items-center justify-between bg-black/80 backdrop-blur-sm">
         <button
           onClick={() => setShowFilters(!showFilters)}
@@ -90,28 +68,21 @@ function HomePage() {
           </svg>
         </button>
 
-        <div className="text-center">
-          <h1 className="text-base sm:text-lg font-semibold text-white/90">Food Finder</h1>
-        </div>
+        <h1 className="text-base sm:text-lg font-semibold text-white/90">Food Finder</h1>
 
         <LanguageSelector />
       </header>
 
-      {/* Filters panel - fixed below header */}
-      <AnimatePresence>
-        {showFilters && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="fixed top-12 sm:top-14 left-0 right-0 z-40 overflow-hidden bg-black/80 backdrop-blur-sm"
-          >
-            <div className="px-3 sm:px-4 py-3 sm:py-4">
-              <FilterChips />
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Filters panel */}
+      <div
+        className={`fixed top-12 sm:top-14 left-0 right-0 z-40 bg-black/80 backdrop-blur-sm transition-all duration-200 overflow-hidden ${
+          showFilters ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'
+        }`}
+      >
+        <div className="px-3 sm:px-4 py-3 sm:py-4">
+          <FilterChips />
+        </div>
+      </div>
 
       {/* Main scrollable area */}
       <main
@@ -125,34 +96,25 @@ function HomePage() {
           <ChatWindow />
 
           {/* View All Results button */}
-          <AnimatePresence>
-            {lastResults.length > 0 && pagination && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }}
-                className="px-3 sm:px-4 py-2 text-center"
+          {lastResults.length > 0 && pagination && (
+            <div className="px-3 sm:px-4 py-2 text-center animate-fade-in">
+              <button
+                onClick={handleViewAllResults}
+                className="px-4 sm:px-5 py-1.5 sm:py-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-full text-xs sm:text-sm font-medium transition-all border border-white/20"
               >
-                <button
-                  onClick={handleViewAllResults}
-                  className="px-4 sm:px-5 py-1.5 sm:py-2 bg-white/10 hover:bg-white/20 backdrop-blur-sm text-white rounded-full text-xs sm:text-sm font-medium transition-all border border-white/20"
-                >
-                  View All {pagination.total_products} Results
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                View All {pagination.total_products} Results
+              </button>
+            </div>
+          )}
         </div>
       </main>
 
-      {/* Bottom area - fixed at bottom */}
+      {/* Bottom area */}
       <div className="fixed bottom-0 left-0 right-0 z-50 pb-4 sm:pb-6 bg-gradient-to-t from-black via-black/95 to-transparent pt-4">
-        {/* Floating Voice Sphere */}
         <div className="flex justify-center py-2 sm:py-3">
           <VoiceSphere />
         </div>
 
-        {/* Text input */}
         <form onSubmit={handleTextSubmit} className="px-4 sm:px-6">
           <div className="relative max-w-md mx-auto">
             <input
@@ -175,7 +137,6 @@ function HomePage() {
           </div>
         </form>
 
-        {/* Safe area for iOS */}
         <div style={{ height: 'env(safe-area-inset-bottom, 0px)' }} />
       </div>
     </div>
