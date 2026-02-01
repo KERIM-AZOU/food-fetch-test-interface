@@ -298,14 +298,14 @@ const VoiceSphere = () => {
         )}
       </AnimatePresence>
 
-      {/* Transcript preview */}
+      {/* Transcript preview - hidden on mobile for cleaner UX */}
       <AnimatePresence>
         {status === 'listening' && transcript.interim && (
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="mt-1.5 sm:mt-2 text-white/60 text-xs sm:text-sm max-w-[180px] sm:max-w-[200px] text-center truncate"
+            className="hidden sm:block mt-2 text-white/60 text-sm max-w-[200px] text-center truncate"
           >
             "{transcript.interim}"
           </motion.p>
