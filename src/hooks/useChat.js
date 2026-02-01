@@ -40,9 +40,12 @@ const useChat = () => {
   const handleSearch = useCallback(async (term) => {
     cancelPending();
 
-    addMessage({ type: 'user', content: term });
+    addMessage({ type: 'user', content: term }, false);
     setIsLoading(true);
     setSphereState('processing');
+
+    // Announce searching
+    await speak(`Searching for ${term}`);
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -58,13 +61,18 @@ const useChat = () => {
       setAllRestaurants(result.all_restaurants || []);
 
       const count = result.products?.length || 0;
+      const total = result.pagination?.total_products || count;
+      const resultMessage = count > 0
+        ? `Found ${total} results for ${term}`
+        : `No results found for ${term}. Try a different search term.`;
+
+      // Speak and add message
+      await speak(resultMessage);
       addMessage({
         type: 'bot',
-        content: count > 0
-          ? `Found ${result.pagination?.total_products || count} results for "${term}"`
-          : `No results found for "${term}". Try a different search term.`,
+        content: resultMessage,
         products: count > 0 ? result.products : undefined
-      });
+      }, false);
 
       setSphereState('idle');
     } catch (error) {
@@ -78,7 +86,7 @@ const useChat = () => {
       setIsLoading(false);
       abortRef.current = null;
     }
-  }, [cancelPending, addMessage, setIsLoading, setSphereState, getSearchParams, setLastResults, setPagination, setAllRestaurants]);
+  }, [cancelPending, addMessage, setIsLoading, setSphereState, getSearchParams, setLastResults, setPagination, setAllRestaurants, speak]);
 
   // Voice input
   const handleVoiceInput = useCallback(async (voiceText, detectedLanguage = 'en') => {
@@ -149,16 +157,18 @@ const useChat = () => {
       const count = result.products?.length || 0;
       const total = result.pagination?.total_products || count;
 
-      // Simple result message (no extra translation call)
+      // Result message with search term
       const resultMessage = count > 0
-        ? `Found ${total} results`
-        : 'No results found. Try something else!';
+        ? `Found ${total} results for ${searchQuery}`
+        : `No results found for ${searchQuery}. Try something else!`;
 
+      // Speak and add message
+      await speak(resultMessage);
       addMessage({
         type: 'bot',
         content: resultMessage,
         products: count > 0 ? result.products : undefined
-      });
+      }, false);
 
       setSphereState('idle');
     } catch (error) {
