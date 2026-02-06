@@ -91,11 +91,12 @@ export const transcribeAudio = async (audioBlob) => {
  * @param {boolean} generateAudio - Whether to generate TTS audio
  * @returns {Promise<{greeting: string, sessionId: string, audio?: object}>}
  */
-export const startChat = async (sessionId, generateAudio = false) => {
+export const startChat = async (sessionId, generateAudio = false, language = 'en') => {
   try {
     const response = await api.post('/chat/start', {
       sessionId,
-      generateAudio
+      generateAudio,
+      language
     });
     return response.data;
   } catch (error) {
@@ -111,12 +112,13 @@ export const startChat = async (sessionId, generateAudio = false) => {
  * @param {boolean} generateAudio - Whether to generate TTS audio
  * @returns {Promise<{response: string, foodMentioned: boolean, foodItems: string[], shouldSearch: boolean, audio?: object}>}
  */
-export const sendChatMessage = async (message, sessionId, generateAudio = false) => {
+export const sendChatMessage = async (message, sessionId, generateAudio = false, language = 'en') => {
   try {
     const response = await api.post('/chat', {
       message,
       sessionId,
-      generateAudio
+      generateAudio,
+      language
     });
     return response.data;
   } catch (error) {

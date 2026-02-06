@@ -20,6 +20,7 @@ const useChat = () => {
     setConversationActive,
     triggerAutoListen,
     getSearchParams,
+    language,
   } = useChatStore();
 
   // Generate session ID on mount
@@ -46,7 +47,7 @@ const useChat = () => {
   const initChat = useCallback(async () => {
     try {
       setSphereState('processing');
-      const result = await startChat(sessionIdRef.current, true);
+      const result = await startChat(sessionIdRef.current, true, language);
 
       if (result.sessionId) {
         sessionIdRef.current = result.sessionId;
@@ -76,7 +77,7 @@ const useChat = () => {
       triggerAutoListen();
       setSphereState('idle');
     }
-  }, [addMessage, setSphereState, speak, playAudioBase64, setConversationActive, triggerAutoListen]);
+  }, [addMessage, setSphereState, speak, playAudioBase64, setConversationActive, triggerAutoListen, language]);
 
   // Perform food search
   const doFoodSearch = useCallback(async (foodItems, controller) => {
@@ -164,7 +165,7 @@ const useChat = () => {
     try {
       addMessage({ type: 'user', content: rawText });
 
-      const chatResult = await sendChatMessage(rawText, sessionIdRef.current, true);
+      const chatResult = await sendChatMessage(rawText, sessionIdRef.current, true, language);
 
       if (controller.signal.aborted) return;
 
@@ -230,7 +231,7 @@ const useChat = () => {
       setIsLoading(false);
       abortRef.current = null;
     }
-  }, [cancelPending, addMessage, setIsLoading, setSphereState, setStoreLanguage, speak, playAudioBase64, doFoodSearch, setConversationActive, triggerAutoListen]);
+  }, [cancelPending, addMessage, setIsLoading, setSphereState, setStoreLanguage, speak, playAudioBase64, doFoodSearch, setConversationActive, triggerAutoListen, language]);
 
   // Audio input - sends raw audio to chat API
   const handleAudioInput = useCallback(async (audioBase64, mimeType) => {
