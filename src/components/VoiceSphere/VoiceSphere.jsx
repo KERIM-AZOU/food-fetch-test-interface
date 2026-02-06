@@ -1,52 +1,27 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import useVoiceRecognition from '../../hooks/useVoiceRecognition';
 import useChat from '../../hooks/useChat';
 import useAIVoice from '../../hooks/useAIVoice';
 import useChatStore from '../../store/chatStore';
 import './VoiceSphere.css';
 
-// Pre-translated greetings
-const GREETINGS = {
-  en: 'What would you like to order today?',
-  ar: 'ماذا تريد أن تطلب اليوم؟',
-  fr: 'Que souhaitez-vous commander aujourd\'hui?',
-  es: '¿Qué te gustaría pedir hoy?',
-  de: 'Was möchten Sie heute bestellen?',
-  it: 'Cosa vorresti ordinare oggi?',
-  pt: 'O que você gostaria de pedir hoje?',
-  ru: 'Что бы вы хотели заказать сегодня?',
-  zh: '你今天想点什么？',
-  ja: '今日は何を注文しますか？',
-  ko: '오늘 무엇을 주문하시겠습니까?',
-  hi: 'आज आप क्या ऑर्डर करना चाहेंगे?',
-  tr: 'Bugün ne sipariş etmek istersiniz?'
-};
-
-const FOLLOWUP_GREETINGS = {
-  en: 'Anything else?',
-  ar: 'شيء آخر؟',
-  fr: 'Autre chose?',
-  es: '¿Algo más?',
-  de: 'Noch etwas?',
-  it: 'Altro?',
-  pt: 'Mais alguma coisa?',
-  ru: 'Что-нибудь ещё?',
-  zh: '还要别的吗？',
-  ja: '他には？',
-  ko: '더 필요하신 거 있나요?',
-  hi: 'कुछ और?',
-  tr: 'Başka?'
-};
-
 const VoiceSphere = () => {
-  const { status: voiceStatus, transcript, volume, start, stop } = useVoiceRecognition();
-  const { handleVoiceInput } = useChat();
-  const { speak, isSpeaking } = useAIVoice();
-  const { language, sphereState, setSphereState } = useChatStore();
+  const { status: voiceStatus, transcript, audioData, volume, start, stop, clearAudioData } = useVoiceRecognition();
+  const { handleVoiceInput, handleAudioInput, initChat } = useChat();
+  const { stop: stopAudio } = useAIVoice();
+  const { sphereState, setSphereState, conversationActive, setConversationActive, isSpeaking } = useChatStore();
 
-  const hasSpokenRef = useRef(false);
+  const hasInitializedRef = useRef(false);
   const lastProcessedRef = useRef('');
+  const lastProcessedAudioRef = useRef(null);
+  const isProcessingRef = useRef(false);
+  const discardNextAudioRef = useRef(false); // Flag to ditch audio on manual stop
+  const wasSpeakingRef = useRef(false);
+  const autoListenTimerRef = useRef(null);
+  const startRef = useRef(start);
+  startRef.current = start; // Always keep ref in sync
   const [isGreeting, setIsGreeting] = useState(false);
+  const [isStopping, setIsStopping] = useState(false);
 
   // Determine current state
   const status = voiceStatus === 'listening' ? 'listening' : sphereState;
@@ -64,13 +39,77 @@ const VoiceSphere = () => {
     }
   }, [voiceStatus, setSphereState]);
 
-  // Get greeting
-  const getGreeting = useCallback((isFollowUp = false) => {
-    const greetings = isFollowUp ? FOLLOWUP_GREETINGS : GREETINGS;
-    return greetings[language] || greetings.en;
-  }, [language]);
+  // Core auto-listening logic: When the AI stops speaking, start listening.
+  useEffect(() => {
+    // Update the ref with the current speaking state for the next render
+    const wasSpeaking = wasSpeakingRef.current;
+    wasSpeakingRef.current = isSpeaking;
 
-  // Handle transcript
+    // Check if the AI was speaking and has now stopped
+    if (wasSpeaking && !isSpeaking) {
+      // If conversation is active, automatically start listening again
+      if (conversationActive && hasInitializedRef.current && !isProcessingRef.current) {
+        // Clear any existing timer
+        if (autoListenTimerRef.current) {
+          clearTimeout(autoListenTimerRef.current);
+        }
+        // Start listening after a short delay to avoid capturing echo
+        autoListenTimerRef.current = setTimeout(() => {
+          console.log('Auto-reactivating listening...');
+          startRef.current();
+        }, 200); // 200ms delay
+      }
+    }
+  }, [isSpeaking, conversationActive]);
+
+
+  // Handle audio data (Native Audio mode - voice-to-voice)
+  useEffect(() => {
+    // Discard audio if manual stop was triggered
+    if (audioData?.base64 && discardNextAudioRef.current) {
+      discardNextAudioRef.current = false;
+      clearAudioData();
+      return;
+    }
+
+    // Don't process if: no data, already processing, or AI is speaking
+    if (!audioData?.base64 || isProcessingRef.current || isSpeaking) {
+      if (audioData?.base64 && isSpeaking) {
+        console.log('Discarding audio (recorded during AI speech)');
+        clearAudioData();
+      }
+      return;
+    }
+
+    // Check if this is new audio
+    if (audioData.base64 !== lastProcessedAudioRef.current) {
+      isProcessingRef.current = true;
+      lastProcessedAudioRef.current = audioData.base64;
+      const audioToProcess = audioData.base64;
+      const mimeToProcess = audioData.mimeType;
+      clearAudioData();
+
+      // Process audio and reset lock when done
+      handleAudioInput(audioToProcess, mimeToProcess)
+        .finally(() => {
+          if (isStopping) {
+            console.log('Stopping flag is set, not auto-listening.');
+            return;
+          }
+          isProcessingRef.current = false;
+          // Auto-listen after processing completes (search or not)
+          const { conversationActive } = useChatStore.getState();
+          if (conversationActive && hasInitializedRef.current) {
+            if (autoListenTimerRef.current) clearTimeout(autoListenTimerRef.current);
+            autoListenTimerRef.current = setTimeout(() => {
+              startRef.current();
+            }, 300);
+          }
+        });
+    }
+  }, [audioData, handleAudioInput, clearAudioData, isSpeaking, isStopping]);
+
+  // Handle transcript (fallback for legacy mode)
   useEffect(() => {
     if (transcript.final && transcript.final !== lastProcessedRef.current) {
       lastProcessedRef.current = transcript.final;
@@ -79,19 +118,38 @@ const VoiceSphere = () => {
   }, [transcript.final, transcript.language, handleVoiceInput]);
 
   const handleClick = async () => {
-    // If active, stop everything
-    if (status === 'listening' || status === 'processing' || isGreeting) {
+    // If active, stop everything and deactivate conversation loop
+    if (status === 'listening' || status === 'processing' || isGreeting || isSpeaking) {
+      setIsStopping(true); // Set stopping flag
+      setTimeout(() => setIsStopping(false), 500); // Reset after a moment
+
+      setConversationActive(false);
+      discardNextAudioRef.current = true; // Ditch any audio from the stopped recording
+      if (autoListenTimerRef.current) {
+        clearTimeout(autoListenTimerRef.current);
+        autoListenTimerRef.current = null;
+      }
+      stopAudio();
       stop();
+      clearAudioData();
       setSphereState('idle');
       return;
     }
 
-    setIsGreeting(true);
-    const greeting = getGreeting(hasSpokenRef.current);
-    hasSpokenRef.current = true;
+    // Re-enable conversation loop when user manually clicks
+    setConversationActive(true);
 
-    await speak(greeting);
-    setIsGreeting(false);
+    // First click: initialize chat with AI greeting
+    if (!hasInitializedRef.current) {
+      setIsGreeting(true);
+      hasInitializedRef.current = true;
+      await initChat();
+      setIsGreeting(false);
+      // Don't start listening here - let the auto-listen effect handle it
+      return;
+    }
+
+    // Start listening
     await start();
   };
 

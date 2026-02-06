@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import useChatStore from '../store/chatStore';
 
 const API_URL = import.meta.env.VITE_FETCH_API_URL || 'http://localhost:3000';
 
@@ -7,7 +8,8 @@ const API_URL = import.meta.env.VITE_FETCH_API_URL || 'http://localhost:3000';
  * Falls back to browser TTS if ElevenLabs is not configured
  */
 const useAIVoice = () => {
-  const [isSpeaking, setIsSpeaking] = useState(false);
+  const isSpeaking = useChatStore(state => state.isSpeaking);
+  const setIsSpeaking = useChatStore(state => state.setIsSpeaking);
   const [isLoading, setIsLoading] = useState(false);
   const audioRef = useRef(null);
   const useElevenLabsRef = useRef(true); // Try ElevenLabs first
@@ -126,9 +128,55 @@ const useAIVoice = () => {
     }
   }, [stop, speakWithAI, speakWithBrowser]);
 
+  // Play audio directly from base64 data (used when audio is already generated)
+  const playAudioBase64 = useCallback(async (base64Data, contentType = 'audio/wav') => {
+    if (!base64Data) return;
+
+    stop(); // Stop any current speech
+
+    return new Promise((resolve) => {
+      try {
+        const audioBlob = new Blob(
+          [Uint8Array.from(atob(base64Data), c => c.charCodeAt(0))],
+          { type: contentType }
+        );
+        const audioUrl = URL.createObjectURL(audioBlob);
+
+        const audioElement = new Audio(audioUrl);
+        audioRef.current = audioElement;
+
+        audioElement.onplay = () => {
+          setIsSpeaking(true);
+        };
+
+        audioElement.onended = () => {
+          setIsSpeaking(false);
+          URL.revokeObjectURL(audioUrl);
+          audioRef.current = null;
+          resolve();
+        };
+
+        audioElement.onerror = () => {
+          setIsSpeaking(false);
+          URL.revokeObjectURL(audioUrl);
+          audioRef.current = null;
+          resolve();
+        };
+
+        audioElement.play().catch(() => {
+          resolve();
+        });
+      } catch (error) {
+        console.error('Failed to play audio:', error);
+        resolve();
+      }
+    });
+  }, [stop]);
+
   return {
     speak,
     stop,
+    playAudioBase64,
     isSpeaking,
     isLoading, // True while fetching AI audio
   };

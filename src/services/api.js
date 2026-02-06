@@ -85,4 +85,67 @@ export const transcribeAudio = async (audioBlob) => {
   }
 };
 
+/**
+ * Start a new chat session with greeting
+ * @param {string} sessionId - Optional session ID
+ * @param {boolean} generateAudio - Whether to generate TTS audio
+ * @returns {Promise<{greeting: string, sessionId: string, audio?: object}>}
+ */
+export const startChat = async (sessionId, generateAudio = false) => {
+  try {
+    const response = await api.post('/chat/start', {
+      sessionId,
+      generateAudio
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error starting chat:', error);
+    throw error;
+  }
+};
+
+/**
+ * Send a chat message
+ * @param {string} message - User message
+ * @param {string} sessionId - Session ID
+ * @param {boolean} generateAudio - Whether to generate TTS audio
+ * @returns {Promise<{response: string, foodMentioned: boolean, foodItems: string[], shouldSearch: boolean, audio?: object}>}
+ */
+export const sendChatMessage = async (message, sessionId, generateAudio = false) => {
+  try {
+    const response = await api.post('/chat', {
+      message,
+      sessionId,
+      generateAudio
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error sending chat message:', error);
+    throw error;
+  }
+};
+
+/**
+ * Send audio for voice-to-voice chat (UNLIMITED via Native Audio)
+ * @param {string} audioBase64 - Base64 encoded audio data
+ * @param {string} mimeType - Audio MIME type
+ * @param {string} sessionId - Session ID
+ * @returns {Promise<{response: string, transcript: string, foodMentioned: boolean, foodItems: string[], shouldSearch: boolean, audio?: object}>}
+ */
+export const sendAudioChat = async (audioBase64, mimeType, sessionId) => {
+  try {
+    const response = await api.post('/chat/audio', {
+      audio: audioBase64,
+      mimeType,
+      sessionId
+    }, {
+      timeout: 60000 // 60 seconds for audio processing
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error sending audio chat:', error);
+    throw error;
+  }
+};
+
 export default api;

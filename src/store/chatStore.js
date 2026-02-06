@@ -35,6 +35,15 @@ const useChatStore = create((set, get) => ({
   // Loading state
   isLoading: false,
 
+  // TTS playback state (shared across all components)
+  isSpeaking: false,
+
+  // Conversation loop active (auto-listen enabled until user says stop)
+  conversationActive: false,
+
+  // Trigger for auto-listen after TTS finishes (incremented by useChat)
+  pendingAutoListen: 0,
+
   // Actions
   addMessage: (message) => set((state) => ({
     messages: [...state.messages, {
@@ -85,6 +94,12 @@ const useChatStore = create((set, get) => ({
   setCurrentPage: (page) => set({ currentPage: page }),
 
   setIsLoading: (isLoading) => set({ isLoading }),
+
+  setIsSpeaking: (isSpeaking) => set({ isSpeaking }),
+
+  setConversationActive: (conversationActive) => set({ conversationActive }),
+
+  triggerAutoListen: () => set((state) => ({ pendingAutoListen: state.pendingAutoListen + 1 })),
 
   // Get current search params
   getSearchParams: () => {

@@ -29,6 +29,7 @@ const useVoiceRecognition = () => {
   const [error, setError] = useState(null);
   const [transcript, setTranscript] = useState({ interim: '', final: '', language: 'en' });
   const [volume, setVolume] = useState(0);
+  const [audioData, setAudioData] = useState(null); // { base64: string, mimeType: string }
 
   const mediaStreamRef = useRef(null);
   const mediaRecorderRef = useRef(null);
@@ -37,6 +38,7 @@ const useVoiceRecognition = () => {
   const analyserRef = useRef(null);
   const animationRef = useRef(null);
   const silenceRef = useRef({ start: null, hasSpeech: false, speakingStart: null });
+  const useNativeAudioRef = useRef(true); // Use Native Audio API by default
 
   // Cleanup all resources
   const cleanup = useCallback(() => {
@@ -163,7 +165,17 @@ const useVoiceRecognition = () => {
         cleanup();
         if (audioChunksRef.current.length > 0) {
           const blob = new Blob(audioChunksRef.current, { type: mimeType || 'audio/webm' });
-          await transcribe(blob);
+
+          if (useNativeAudioRef.current) {
+            // Native Audio mode: provide raw audio data for voice-to-voice
+            const arrayBuffer = await blob.arrayBuffer();
+            const base64 = btoa(new Uint8Array(arrayBuffer).reduce((d, b) => d + String.fromCharCode(b), ''));
+            setAudioData({ base64, mimeType: blob.type });
+            setStatus('idle');
+          } else {
+            // Legacy mode: transcribe first
+            await transcribe(blob);
+          }
         } else {
           setStatus('idle');
         }
@@ -205,7 +217,17 @@ const useVoiceRecognition = () => {
     }
   }, [cleanup]);
 
-  return { status, error, transcript, volume, start, stop };
+  // Toggle between native audio and transcription mode
+  const setUseNativeAudio = useCallback((value) => {
+    useNativeAudioRef.current = value;
+  }, []);
+
+  // Clear audio data after processing
+  const clearAudioData = useCallback(() => {
+    setAudioData(null);
+  }, []);
+
+  return { status, error, transcript, volume, audioData, start, stop, setUseNativeAudio, clearAudioData };
 };
 
 export default useVoiceRecognition;

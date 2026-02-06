@@ -1,13 +1,13 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useEffect } from 'react';
 import useChatStore from '../store/chatStore';
-import { search } from '../services/api';
+import { search, startChat, sendChatMessage, sendAudioChat } from '../services/api';
 import useAIVoice from './useAIVoice';
 
-const API_URL = import.meta.env.VITE_FETCH_API_URL || 'http://localhost:3000';
-
 const useChat = () => {
-  const { speak } = useAIVoice();
+  const { speak, playAudioBase64 } = useAIVoice();
   const abortRef = useRef(null);
+  const sessionIdRef = useRef(null);
+  const lastFoodItemsRef = useRef([]);
 
   const {
     addMessage: addMessageToStore,
@@ -17,8 +17,17 @@ const useChat = () => {
     setIsLoading,
     setSphereState,
     setLanguage: setStoreLanguage,
+    setConversationActive,
+    triggerAutoListen,
     getSearchParams,
   } = useChatStore();
+
+  // Generate session ID on mount
+  useEffect(() => {
+    if (!sessionIdRef.current) {
+      sessionIdRef.current = `session_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    }
+  }, []);
 
   // Cancel any pending request
   const cancelPending = useCallback(() => {
@@ -28,23 +37,73 @@ const useChat = () => {
     }
   }, []);
 
-  // Add message with optional TTS
-  const addMessage = useCallback((message, shouldSpeak = true) => {
+  // Add message - NEVER auto-speak (TTS handled separately)
+  const addMessage = useCallback((message) => {
     addMessageToStore(message);
-    if (shouldSpeak && (message.type === 'bot' || message.type === 'error')) {
-      speak(message.content.replace(/\*\*/g, ''));
-    }
-  }, [addMessageToStore, speak]);
+  }, [addMessageToStore]);
 
-  // Text search
+  // Start chat with greeting
+  const initChat = useCallback(async () => {
+    try {
+      setSphereState('processing');
+      const result = await startChat(sessionIdRef.current, true);
+
+      if (result.sessionId) {
+        sessionIdRef.current = result.sessionId;
+      }
+
+      // Show greeting message
+      addMessage({ type: 'bot', content: result.greeting });
+
+      // Mark conversation as active (enables auto-listen loop)
+      setConversationActive(true);
+
+      // Play audio (blocks until done)
+      if (result.audio?.data) {
+        await playAudioBase64(result.audio.data, result.audio.contentType || 'audio/wav');
+      } else {
+        await speak(result.greeting);
+      }
+
+      // Signal VoiceSphere to auto-listen
+      triggerAutoListen();
+      setSphereState('idle');
+    } catch (error) {
+      console.error('Failed to init chat:', error);
+      const fallback = "Hey! What food do you want?";
+      addMessage({ type: 'bot', content: fallback });
+      await speak(fallback);
+      triggerAutoListen();
+      setSphereState('idle');
+    }
+  }, [addMessage, setSphereState, speak, playAudioBase64, setConversationActive, triggerAutoListen]);
+
+  // Perform food search
+  const doFoodSearch = useCallback(async (foodItems, controller) => {
+    const params = getSearchParams();
+    const searchTerm = foodItems.join(' ');
+
+    const result = await search({ term: searchTerm, ...params });
+    if (controller?.signal.aborted) return;
+
+    setLastResults(result.products || []);
+    setPagination(result.pagination || null);
+    setAllRestaurants(result.all_restaurants || []);
+
+    const count = result.products?.length || 0;
+    const total = result.pagination?.total_products || count;
+
+    return { count, total, products: result.products };
+  }, [getSearchParams, setLastResults, setPagination, setAllRestaurants]);
+
+  // Text search (direct search, bypasses chat)
   const handleSearch = useCallback(async (term) => {
     cancelPending();
 
-    addMessage({ type: 'user', content: term }, false);
+    addMessage({ type: 'user', content: term });
     setIsLoading(true);
     setSphereState('processing');
 
-    // Announce searching
     await speak(`Searching for ${term}`);
 
     const controller = new AbortController();
@@ -63,23 +122,22 @@ const useChat = () => {
       const count = result.products?.length || 0;
       const total = result.pagination?.total_products || count;
       const resultMessage = count > 0
-        ? `Found results for ${term}`
-        : `No results found for ${term}. Try a different search term.`;
+        ? `Found ${total} results for ${term}`
+        : `No results for ${term}. Try something else.`;
 
-      // Speak and add message
-      await speak(resultMessage);
       addMessage({
         type: 'bot',
         content: resultMessage,
         products: count > 0 ? result.products : undefined
-      }, false);
+      });
+      await speak(resultMessage);
 
       setSphereState('idle');
     } catch (error) {
       if (error.name === 'AbortError') return;
 
       console.error('Search error:', error);
-      addMessage({ type: 'error', content: 'Sorry, I had trouble searching. Please try again.' });
+      addMessage({ type: 'error', content: 'Search failed. Try again.' });
       setSphereState('error');
       setTimeout(() => setSphereState('idle'), 3000);
     } finally {
@@ -88,7 +146,7 @@ const useChat = () => {
     }
   }, [cancelPending, addMessage, setIsLoading, setSphereState, getSearchParams, setLastResults, setPagination, setAllRestaurants, speak]);
 
-  // Voice input
+  // Voice/text input - conversational chat
   const handleVoiceInput = useCallback(async (voiceText, detectedLanguage = 'en') => {
     const rawText = voiceText.trim();
     if (!rawText) {
@@ -104,87 +162,175 @@ const useChat = () => {
     abortRef.current = controller;
 
     try {
-      const params = getSearchParams();
+      addMessage({ type: 'user', content: rawText });
 
-      // Extract keywords
-      const processRes = await fetch(`${API_URL}/process-voice`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: rawText,
-          language: detectedLanguage,
-          lat: params.lat,
-          lon: params.lon
-        }),
-        signal: controller.signal
-      });
+      const chatResult = await sendChatMessage(rawText, sessionIdRef.current, true);
 
       if (controller.signal.aborted) return;
 
-      const processResult = await processRes.json();
-
-      // Handle non-food requests
-      if (processResult.not_food_related) {
-        await speak(processResult.search_message);
-        addMessage({ type: 'bot', content: processResult.search_message }, false);
-        setSphereState('idle');
-        setIsLoading(false);
-        return;
+      if (chatResult.sessionId) {
+        sessionIdRef.current = chatResult.sessionId;
       }
 
-      const searchQuery = processResult.search_query || rawText;
-      const searchMessage = processResult.search_message || `Searching for ${searchQuery}`;
+      if (chatResult.foodMentioned && chatResult.foodItems?.length > 0) {
+        lastFoodItemsRef.current = chatResult.foodItems;
+      }
 
-      // Announce search
-      await speak(searchMessage);
-      if (controller.signal.aborted) return;
+      // Stop conversation loop if user said stop/bye
+      if (chatResult.shouldStop) {
+        setConversationActive(false);
+      }
 
-      addMessage({ type: 'user', content: searchQuery }, false);
+      // Show and speak response
+      addMessage({ type: 'bot', content: chatResult.response });
+      if (chatResult.audio?.data) {
+        await playAudioBase64(chatResult.audio.data, chatResult.audio.contentType || 'audio/wav');
+      } else {
+        await speak(chatResult.response);
+      }
 
-      // Search
-      const result = await search({ term: searchQuery, ...params });
-      if (controller.signal.aborted) return;
+      // Search if needed
+      if (chatResult.shouldSearch && lastFoodItemsRef.current.length > 0) {
+        setSphereState('processing');
+        const searchResult = await doFoodSearch(lastFoodItemsRef.current, controller);
 
-      setLastResults(result.products || []);
-      setPagination(result.pagination || null);
-      setAllRestaurants(result.all_restaurants || []);
+        if (controller.signal.aborted) return;
 
-      // Update language if detected
+        if (searchResult) {
+          const { count, total, products } = searchResult;
+          const resultMessage = count > 0
+            ? `Found ${total} options!`
+            : `Nothing found. Try something else?`;
+
+          addMessage({
+            type: 'bot',
+            content: resultMessage,
+            products: count > 0 ? products : undefined
+          });
+        }
+      }
+
       if (detectedLanguage !== 'en') {
         setStoreLanguage(detectedLanguage);
       }
 
-      const count = result.products?.length || 0;
-      const total = result.pagination?.total_products || count;
-
-      // Result message with search term
-      const resultMessage = count > 0
-        ? `Found ${total} results for ${searchQuery}`
-        : `No results found for ${searchQuery}. Try something else!`;
-
-      // Speak and add message
-      await speak(resultMessage);
-      addMessage({
-        type: 'bot',
-        content: resultMessage,
-        products: count > 0 ? result.products : undefined
-      }, false);
-
+      // Signal auto-listen if conversation continues
+      if (!chatResult.shouldStop) {
+        triggerAutoListen();
+      }
       setSphereState('idle');
     } catch (error) {
       if (error.name === 'AbortError') return;
 
-      console.error('Voice input error:', error);
-      addMessage({ type: 'error', content: 'Sorry, something went wrong. Please try again.' });
+      console.error('Chat error:', error);
+      addMessage({ type: 'error', content: 'Something went wrong. Try again.' });
       setSphereState('error');
       setTimeout(() => setSphereState('idle'), 3000);
     } finally {
       setIsLoading(false);
       abortRef.current = null;
     }
-  }, [cancelPending, addMessage, setIsLoading, setSphereState, getSearchParams, setLastResults, setPagination, setAllRestaurants, speak, setStoreLanguage]);
+  }, [cancelPending, addMessage, setIsLoading, setSphereState, setStoreLanguage, speak, playAudioBase64, doFoodSearch, setConversationActive, triggerAutoListen]);
 
-  return { handleSearch, handleVoiceInput };
+  // Audio input - sends raw audio to chat API
+  const handleAudioInput = useCallback(async (audioBase64, mimeType) => {
+    if (!audioBase64) {
+      setSphereState('idle');
+      return;
+    }
+
+    cancelPending();
+    setIsLoading(true);
+    setSphereState('processing');
+
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    try {
+      // Send audio to chat/audio endpoint
+      const chatResult = await sendAudioChat(audioBase64, mimeType, sessionIdRef.current);
+
+      if (controller.signal.aborted) return;
+
+      // Update session ID
+      if (chatResult.sessionId) {
+        sessionIdRef.current = chatResult.sessionId;
+      }
+
+      // Show user message
+      if (chatResult.transcript) {
+        addMessage({ type: 'user', content: chatResult.transcript });
+      }
+
+      // Store food items
+      if (chatResult.foodMentioned && chatResult.foodItems?.length > 0) {
+        lastFoodItemsRef.current = chatResult.foodItems;
+      }
+
+      // Stop conversation loop if user said stop/bye
+      if (chatResult.shouldStop) {
+        setConversationActive(false);
+      }
+
+      // Add bot response message first
+      addMessage({ type: 'bot', content: chatResult.response });
+
+      // Play audio response (wrapped in try/catch to prevent stuck state)
+      try {
+        if (chatResult.audio?.data) {
+          await playAudioBase64(chatResult.audio.data, chatResult.audio.contentType || 'audio/wav');
+        } else {
+          await speak(chatResult.response);
+        }
+      } catch (ttsErr) {
+        console.error('TTS playback error:', ttsErr);
+      }
+
+      // If should search, do it after audio finishes
+      if (chatResult.shouldSearch && lastFoodItemsRef.current.length > 0) {
+        try {
+          setSphereState('processing');
+          const searchResult = await doFoodSearch(lastFoodItemsRef.current, controller);
+
+          if (controller.signal.aborted) return;
+
+          if (searchResult) {
+            const { count, total, products } = searchResult;
+            const foodTerm = lastFoodItemsRef.current.join(', ');
+            const resultMessage = count > 0
+              ? `Found ${total} options for ${foodTerm}!`
+              : `No ${foodTerm} nearby. Try something else?`;
+
+            addMessage({
+              type: 'bot',
+              content: resultMessage,
+              products: count > 0 ? products : undefined
+            });
+          }
+        } catch (searchErr) {
+          console.error('Search error:', searchErr);
+        }
+      }
+
+      // Signal auto-listen if conversation continues
+      if (!chatResult.shouldStop) {
+        triggerAutoListen();
+      }
+      setSphereState('idle');
+    } catch (error) {
+      if (error.name === 'AbortError') return;
+
+      console.error('Audio chat error:', error);
+      addMessage({ type: 'error', content: 'Something went wrong. Try again.' });
+      setSphereState('error');
+      setTimeout(() => setSphereState('idle'), 3000);
+    } finally {
+      setIsLoading(false);
+      abortRef.current = null;
+    }
+  }, [cancelPending, addMessage, setIsLoading, setSphereState, speak, playAudioBase64, doFoodSearch, setConversationActive, triggerAutoListen]);
+
+  return { handleSearch, handleVoiceInput, handleAudioInput, initChat };
 };
 
 export default useChat;
