@@ -56,7 +56,7 @@ const VoiceSphere = () => {
         // Start listening after a short delay to avoid capturing echo
         autoListenTimerRef.current = setTimeout(() => {
           console.log('Auto-reactivating listening...');
-          startRef.current();
+          // startRef.current();
         }, 200); // 200ms delay
       }
     }
@@ -102,7 +102,7 @@ const VoiceSphere = () => {
           if (conversationActive && hasInitializedRef.current) {
             if (autoListenTimerRef.current) clearTimeout(autoListenTimerRef.current);
             autoListenTimerRef.current = setTimeout(() => {
-              startRef.current();
+              // startRef.current();
             }, 300);
           }
         });
