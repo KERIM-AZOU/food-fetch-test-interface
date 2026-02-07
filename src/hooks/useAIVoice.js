@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import useChatStore from '../store/chatStore';
 
 const API_URL = import.meta.env.VITE_FETCH_API_URL || 'http://localhost:3000';
@@ -6,20 +6,53 @@ const API_URL = import.meta.env.VITE_FETCH_API_URL || 'http://localhost:3000';
 /**
  * Hook for AI-powered text-to-speech using ElevenLabs
  * Falls back to browser TTS if ElevenLabs is not configured
+ *
+ * iOS Safari fix: reuses a single Audio element created on first user gesture
+ * to avoid autoplay restrictions blocking subsequent plays.
  */
 const useAIVoice = () => {
   const isSpeaking = useChatStore(state => state.isSpeaking);
   const setIsSpeaking = useChatStore(state => state.setIsSpeaking);
   const [isLoading, setIsLoading] = useState(false);
   const audioRef = useRef(null);
-  const useElevenLabsRef = useRef(true); // Try ElevenLabs first
+  const useElevenLabsRef = useRef(true);
+
+  // Create a persistent audio element once (iOS needs this reused)
+  useEffect(() => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio();
+      audioRef.current.playsInline = true;
+    }
+  }, []);
+
+  // Unlock audio on first user gesture (iOS requirement)
+  useEffect(() => {
+    const unlock = () => {
+      const el = audioRef.current;
+      if (el) {
+        // Play a silent snippet to unlock the element for future programmatic plays
+        el.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+        el.play().then(() => {
+          el.pause();
+          el.currentTime = 0;
+        }).catch(() => {});
+      }
+      document.removeEventListener('touchstart', unlock);
+      document.removeEventListener('click', unlock);
+    };
+    document.addEventListener('touchstart', unlock, { once: true });
+    document.addEventListener('click', unlock, { once: true });
+    return () => {
+      document.removeEventListener('touchstart', unlock);
+      document.removeEventListener('click', unlock);
+    };
+  }, []);
 
   // Stop any currently playing audio
   const stop = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
-      audioRef.current = null;
     }
     window.speechSynthesis?.cancel();
     setIsSpeaking(false);
@@ -70,40 +103,45 @@ const useAIVoice = () => {
 
       const { audio, contentType } = await response.json();
 
-      // Create audio from base64
+      // Create audio from base64 and play via persistent element (iOS fix)
       const audioBlob = new Blob(
         [Uint8Array.from(atob(audio), c => c.charCodeAt(0))],
         { type: contentType }
       );
       const audioUrl = URL.createObjectURL(audioBlob);
 
-      // Play the audio
       return new Promise((resolve) => {
-        const audioElement = new Audio(audioUrl);
-        audioRef.current = audioElement;
+        const el = audioRef.current;
+        if (!el) { setIsLoading(false); resolve(); return; }
 
-        audioElement.onplay = () => {
+        const onEnded = () => {
+          setIsSpeaking(false);
+          URL.revokeObjectURL(audioUrl);
+          el.removeEventListener('ended', onEnded);
+          el.removeEventListener('error', onError);
+          resolve();
+        };
+
+        const onError = () => {
+          setIsSpeaking(false);
+          setIsLoading(false);
+          URL.revokeObjectURL(audioUrl);
+          el.removeEventListener('ended', onEnded);
+          el.removeEventListener('error', onError);
+          resolve();
+        };
+
+        el.addEventListener('ended', onEnded);
+        el.addEventListener('error', onError);
+
+        el.src = audioUrl;
+        el.play().then(() => {
           setIsLoading(false);
           setIsSpeaking(true);
-        };
-
-        audioElement.onended = () => {
-          setIsSpeaking(false);
-          URL.revokeObjectURL(audioUrl);
-          audioRef.current = null;
-          resolve();
-        };
-
-        audioElement.onerror = () => {
-          setIsSpeaking(false);
+        }).catch(() => {
           setIsLoading(false);
-          URL.revokeObjectURL(audioUrl);
-          audioRef.current = null;
-          resolve();
-        };
-
-        audioElement.play().catch(() => {
-          setIsLoading(false);
+          el.removeEventListener('ended', onEnded);
+          el.removeEventListener('error', onError);
           resolve();
         });
       });
@@ -128,7 +166,7 @@ const useAIVoice = () => {
     }
   }, [stop, speakWithAI, speakWithBrowser]);
 
-  // Play audio directly from base64 data (used when audio is already generated)
+  // Play audio directly from base64 data (reuses persistent element for iOS)
   const playAudioBase64 = useCallback(async (base64Data, contentType = 'audio/wav') => {
     if (!base64Data) return;
 
@@ -141,29 +179,44 @@ const useAIVoice = () => {
           { type: contentType }
         );
         const audioUrl = URL.createObjectURL(audioBlob);
+        let prevUrl = null;
 
-        const audioElement = new Audio(audioUrl);
-        audioRef.current = audioElement;
+        const el = audioRef.current;
+        if (!el) { resolve(); return; }
 
-        audioElement.onplay = () => {
+        // Clean up previous object URL if any
+        if (el.src && el.src.startsWith('blob:')) {
+          prevUrl = el.src;
+        }
+
+        const onEnded = () => {
+          setIsSpeaking(false);
+          URL.revokeObjectURL(audioUrl);
+          if (prevUrl) URL.revokeObjectURL(prevUrl);
+          el.removeEventListener('ended', onEnded);
+          el.removeEventListener('error', onError);
+          resolve();
+        };
+
+        const onError = () => {
+          setIsSpeaking(false);
+          URL.revokeObjectURL(audioUrl);
+          if (prevUrl) URL.revokeObjectURL(prevUrl);
+          el.removeEventListener('ended', onEnded);
+          el.removeEventListener('error', onError);
+          resolve();
+        };
+
+        el.addEventListener('ended', onEnded);
+        el.addEventListener('error', onError);
+
+        el.src = audioUrl;
+        el.play().then(() => {
           setIsSpeaking(true);
-        };
-
-        audioElement.onended = () => {
-          setIsSpeaking(false);
-          URL.revokeObjectURL(audioUrl);
-          audioRef.current = null;
-          resolve();
-        };
-
-        audioElement.onerror = () => {
-          setIsSpeaking(false);
-          URL.revokeObjectURL(audioUrl);
-          audioRef.current = null;
-          resolve();
-        };
-
-        audioElement.play().catch(() => {
+        }).catch((err) => {
+          console.error('iOS audio play failed:', err);
+          el.removeEventListener('ended', onEnded);
+          el.removeEventListener('error', onError);
           resolve();
         });
       } catch (error) {
