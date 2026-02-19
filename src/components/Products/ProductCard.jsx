@@ -1,10 +1,16 @@
 import React from 'react';
 import VariantBadge from './VariantBadge';
+import useChatStore from '../../store/chatStore';
+
+const REGION_CURRENCY = { qatar: 'QAR', turkey: 'TRY' };
 
 const ProductCard = ({ product }) => {
+  const region = useChatStore(state => state.region);
+  const currency = REGION_CURRENCY[region] || 'QAR';
+
   const formatPrice = (price) => {
     if (price === null || price === undefined) return 'N/A';
-    return `${price.toFixed(2)} QAR`;
+    return `${price.toFixed(2)} ${currency}`;
   };
 
   return (

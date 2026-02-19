@@ -64,7 +64,13 @@ const useChatStore = create((set, get) => ({
 
   setLanguage: (language) => set({ language }),
 
-  setRegion: (region) => set({ region }),
+  setRegion: (region) => {
+    const regionCoords = {
+      qatar: { lat: 25.2855, lon: 51.5314 },
+      turkey: { lat: 41.0082, lon: 28.9784 }, // Istanbul
+    };
+    set({ region, location: regionCoords[region] ?? regionCoords.qatar });
+  },
 
   setPlatforms: (platforms) => set({ platforms }),
 
