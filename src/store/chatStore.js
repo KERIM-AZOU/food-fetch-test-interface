@@ -14,6 +14,9 @@ const useChatStore = create((set, get) => ({
   // Language setting (ISO code)
   language: 'en',
 
+  // Region setting
+  region: 'qatar',
+
   // Filters
   filters: {
     sort: 'price',
@@ -60,6 +63,8 @@ const useChatStore = create((set, get) => ({
   setLocation: (location) => set({ location }),
 
   setLanguage: (language) => set({ language }),
+
+  setRegion: (region) => set({ region }),
 
   setPlatforms: (platforms) => set({ platforms }),
 
@@ -109,6 +114,7 @@ const useChatStore = create((set, get) => ({
       lon: state.location.lon,
       platforms: state.platforms,
       page: state.currentPage,
+      region: state.region,
       ...state.filters
     };
   }

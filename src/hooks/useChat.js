@@ -79,12 +79,12 @@ const useChat = () => {
     }
   }, [addMessage, setSphereState, speak, playAudioBase64, setConversationActive, triggerAutoListen, language]);
 
-  // Perform food search
-  const doFoodSearch = useCallback(async (foodItems, controller) => {
-    const params = getSearchParams();
-    const searchTerm = foodItems.join(' ');
+  // Perform food search — returns summary + audio from backend when generateAudio=true
+  const doFoodSearch = useCallback(async (foodItems, controller, language, generateAudio = false) => {
+    const params = getSearchParams(); // includes region
+    const searchTerm = foodItems[0]; // use first food item per API spec
 
-    const result = await search({ term: searchTerm, ...params });
+    const result = await search({ term: searchTerm, ...params, language, generateAudio });
     if (controller?.signal.aborted) return;
 
     setLastResults(result.products || []);
@@ -94,7 +94,7 @@ const useChat = () => {
     const count = result.products?.length || 0;
     const total = result.pagination?.total_products || count;
 
-    return { count, total, products: result.products };
+    return { count, total, products: result.products, summary: result.summary, audio: result.audio };
   }, [getSearchParams, setLastResults, setPagination, setAllRestaurants]);
 
   // Text search (direct search, bypasses chat)
@@ -182,32 +182,42 @@ const useChat = () => {
         setConversationActive(false);
       }
 
-      // Show and speak response
-      addMessage({ type: 'bot', content: chatResult.response });
-      if (chatResult.audio?.data) {
-        await playAudioBase64(chatResult.audio.data, chatResult.audio.contentType || 'audio/wav');
-      } else {
-        await speak(chatResult.response);
+      // Show and speak response — skip if empty (shouldSearch: true sends response: "")
+      if (chatResult.response) {
+        addMessage({ type: 'bot', content: chatResult.response });
+      }
+      if (!chatResult.shouldSearch) {
+        if (chatResult.audio?.data) {
+          await playAudioBase64(chatResult.audio.data, chatResult.audio.contentType || 'audio/wav');
+        } else if (chatResult.response) {
+          await speak(chatResult.response);
+        }
       }
 
-      // Search if needed
+      // Search if needed — pass language + generateAudio to get spoken summary
       if (chatResult.shouldSearch && lastFoodItemsRef.current.length > 0) {
         setSphereState('processing');
-        const searchResult = await doFoodSearch(lastFoodItemsRef.current, controller);
+        const searchLang = detectedLanguage || language;
+        const searchResult = await doFoodSearch(lastFoodItemsRef.current, controller, searchLang, true);
 
         if (controller.signal.aborted) return;
 
         if (searchResult) {
-          const { count, total, products } = searchResult;
-          const resultMessage = count > 0
-            ? `Found ${total} options!`
-            : `Nothing found. Try something else?`;
+          const { summary, audio, products } = searchResult;
+          const displayMsg = summary || (products?.length > 0 ? `Found results!` : `Nothing found. Try something else?`);
 
           addMessage({
             type: 'bot',
-            content: resultMessage,
-            products: count > 0 ? products : undefined
+            content: displayMsg,
+            products: products?.length > 0 ? products : undefined
           });
+
+          // Play search audio announcement
+          if (audio?.data) {
+            await playAudioBase64(audio.data, audio.contentType || 'audio/mpeg');
+          } else if (summary) {
+            await speak(summary);
+          }
         }
       }
 
@@ -273,40 +283,49 @@ const useChat = () => {
         setConversationActive(false);
       }
 
-      // Add bot response message first
-      addMessage({ type: 'bot', content: chatResult.response });
-
-      // Play audio response (wrapped in try/catch to prevent stuck state)
-      try {
-        if (chatResult.audio?.data) {
-          await playAudioBase64(chatResult.audio.data, chatResult.audio.contentType || 'audio/wav');
-        } else {
-          await speak(chatResult.response);
-        }
-      } catch (ttsErr) {
-        console.error('TTS playback error:', ttsErr);
+      // Add bot response message — skip if empty (shouldSearch: true sends response: "")
+      if (chatResult.response) {
+        addMessage({ type: 'bot', content: chatResult.response });
       }
 
-      // If should search, do it after audio finishes
+      // Play audio response — skip when shouldSearch (nothing to play, response is "")
+      if (!chatResult.shouldSearch) {
+        try {
+          if (chatResult.audio?.data) {
+            await playAudioBase64(chatResult.audio.data, chatResult.audio.contentType || 'audio/wav');
+          } else if (chatResult.response) {
+            await speak(chatResult.response);
+          }
+        } catch (ttsErr) {
+          console.error('TTS playback error:', ttsErr);
+        }
+      }
+
+      // If should search, do it — pass language + generateAudio to get spoken summary
       if (chatResult.shouldSearch && lastFoodItemsRef.current.length > 0) {
         try {
           setSphereState('processing');
-          const searchResult = await doFoodSearch(lastFoodItemsRef.current, controller);
+          const searchLang = chatResult.language || language;
+          const searchResult = await doFoodSearch(lastFoodItemsRef.current, controller, searchLang, true);
 
           if (controller.signal.aborted) return;
 
           if (searchResult) {
-            const { count, total, products } = searchResult;
-            const foodTerm = lastFoodItemsRef.current.join(', ');
-            const resultMessage = count > 0
-              ? `Found ${total} options for ${foodTerm}!`
-              : `No ${foodTerm} nearby. Try something else?`;
+            const { summary, audio, products } = searchResult;
+            const displayMsg = summary || (products?.length > 0 ? `Found results!` : `Nothing found. Try something else?`);
 
             addMessage({
               type: 'bot',
-              content: resultMessage,
-              products: count > 0 ? products : undefined
+              content: displayMsg,
+              products: products?.length > 0 ? products : undefined
             });
+
+            // Play search audio announcement
+            if (audio?.data) {
+              await playAudioBase64(audio.data, audio.contentType || 'audio/mpeg');
+            } else if (summary) {
+              await speak(summary);
+            }
           }
         } catch (searchErr) {
           console.error('Search error:', searchErr);

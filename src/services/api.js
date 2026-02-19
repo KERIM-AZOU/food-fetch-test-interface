@@ -18,7 +18,10 @@ export const search = async ({
   time_min,
   time_max,
   restaurant_filter = '',
-  group_by_restaurant = false
+  group_by_restaurant = false,
+  region,
+  language,
+  generateAudio = false
 }) => {
   try {
     const response = await api.post('/search', {
@@ -33,7 +36,10 @@ export const search = async ({
       time_min,
       time_max,
       restaurant_filter,
-      group_by_restaurant
+      group_by_restaurant,
+      ...(region && { region }),
+      ...(language && { language }),
+      ...(generateAudio && { generateAudio }),
     });
     return response.data;
   } catch (error) {

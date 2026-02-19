@@ -16,7 +16,8 @@ const ResultsPage = () => {
     setAllRestaurants,
     filters,
     platforms,
-    location
+    location,
+    region
   } = useChatStore();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -41,6 +42,7 @@ const ResultsPage = () => {
         lon: location.lon,
         page,
         platforms,
+        region,
         ...filters
       });
 
