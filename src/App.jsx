@@ -31,7 +31,7 @@ function HomePage() {
   const [textInput, setTextInput] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const { handleSearch } = useChat();
-  const { isLoading, lastResults, pagination, messages } = useChatStore();
+  const { isLoading, lastResults, pagination, messages, region, setRegion } = useChatStore();
   const navigate = useNavigate();
 
   const handleTextSubmit = (e) => {
@@ -76,10 +76,32 @@ function HomePage() {
       {/* Filters panel */}
       <div
         className={`fixed top-12 sm:top-14 left-0 right-0 z-40 bg-black/80 backdrop-blur-sm transition-all duration-200 overflow-hidden ${
-          showFilters ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'
+          showFilters ? 'max-h-60 opacity-100' : 'max-h-0 opacity-0'
         }`}
       >
-        <div className="px-3 sm:px-4 py-3 sm:py-4">
+        <div className="px-3 sm:px-4 pt-3 sm:pt-4 pb-1">
+          {/* Region selector */}
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-white/50 text-xs">Region</span>
+            <div className="flex rounded-full overflow-hidden border border-white/10">
+              {[
+                { value: 'qatar', label: '🇶🇦 Qatar' },
+                { value: 'turkey', label: '🇹🇷 Turkey' },
+              ].map(({ value, label }) => (
+                <button
+                  key={value}
+                  onClick={() => setRegion(value)}
+                  className={`px-3 py-1 text-xs font-medium transition-colors ${
+                    region === value
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white/5 text-white/50 hover:bg-white/10'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
           <FilterChips />
         </div>
       </div>
