@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import useChatStore from '../store/chatStore';
 
-const API_URL = import.meta.env.VITE_FETCH_API_URL || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_FETCH_TST_API_URL || 'http://localhost:3000';
 
 // Safety timeout — if audio never fires 'ended', auto-resolve after this
 const PLAY_TIMEOUT_MS = 15000;

@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 
-const API_URL = import.meta.env.VITE_FETCH_API_URL || 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_FETCH_TST_API_URL || 'http://localhost:3000';
 
 // Audio settings
 const SILENCE_DURATION = 1500; // Auto-stop after 1.5s of silence
