@@ -17,7 +17,8 @@ const ResultsPage = () => {
     filters,
     platforms,
     location,
-    region
+    region,
+    language
   } = useChatStore();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -43,6 +44,7 @@ const ResultsPage = () => {
         page,
         platforms,
         region,
+        language,
         ...filters
       });
 

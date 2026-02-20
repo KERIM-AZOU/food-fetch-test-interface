@@ -140,12 +140,13 @@ export const sendChatMessage = async (message, sessionId, generateAudio = false,
  * @param {string} sessionId - Session ID
  * @returns {Promise<{response: string, transcript: string, foodMentioned: boolean, foodItems: string[], shouldSearch: boolean, audio?: object}>}
  */
-export const sendAudioChat = async (audioBase64, mimeType, sessionId) => {
+export const sendAudioChat = async (audioBase64, mimeType, sessionId, language) => {
   try {
     const response = await api.post('/chat/audio', {
       audio: audioBase64,
       mimeType,
-      sessionId
+      sessionId,
+      ...(language && { language }),
     }, {
       timeout: 60000 // 60 seconds for audio processing
     });

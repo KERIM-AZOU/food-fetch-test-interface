@@ -3,6 +3,21 @@ import useChatStore from '../store/chatStore';
 import { search, startChat, sendChatMessage, sendAudioChat } from '../services/api';
 import useAIVoice from './useAIVoice';
 
+// If the LLM accidentally returns the JSON schema as a plain string,
+// parse it and merge its fields so the app keeps working correctly.
+const normalizeChat = (result) => {
+  if (!result.response) return result;
+  const str = result.response.trim();
+  if (!str.startsWith('{')) return result;
+  try {
+    const parsed = JSON.parse(str);
+    if (parsed && typeof parsed === 'object' && 'response' in parsed) {
+      return { ...result, ...parsed };
+    }
+  } catch {}
+  return result;
+};
+
 const useChat = () => {
   const { speak, playAudioBase64 } = useAIVoice();
   const abortRef = useRef(null);
@@ -112,7 +127,7 @@ const useChat = () => {
 
     try {
       const params = getSearchParams();
-      const result = await search({ term, ...params });
+      const result = await search({ term, ...params, language });
 
       if (controller.signal.aborted) return;
 
@@ -145,7 +160,7 @@ const useChat = () => {
       setIsLoading(false);
       abortRef.current = null;
     }
-  }, [cancelPending, addMessage, setIsLoading, setSphereState, getSearchParams, setLastResults, setPagination, setAllRestaurants, speak]);
+  }, [cancelPending, addMessage, setIsLoading, setSphereState, getSearchParams, setLastResults, setPagination, setAllRestaurants, speak, language]);
 
   // Voice/text input - conversational chat
   const handleVoiceInput = useCallback(async (voiceText, detectedLanguage = 'en') => {
@@ -165,7 +180,7 @@ const useChat = () => {
     try {
       addMessage({ type: 'user', content: rawText });
 
-      const chatResult = await sendChatMessage(rawText, sessionIdRef.current, true, language);
+      const chatResult = normalizeChat(await sendChatMessage(rawText, sessionIdRef.current, true, language));
 
       if (controller.signal.aborted) return;
 
@@ -259,7 +274,7 @@ const useChat = () => {
 
     try {
       // Send audio to chat/audio endpoint
-      const chatResult = await sendAudioChat(audioBase64, mimeType, sessionIdRef.current);
+      const chatResult = normalizeChat(await sendAudioChat(audioBase64, mimeType, sessionIdRef.current, language));
 
       if (controller.signal.aborted) return;
 
@@ -348,7 +363,7 @@ const useChat = () => {
       setIsLoading(false);
       abortRef.current = null;
     }
-  }, [cancelPending, addMessage, setIsLoading, setSphereState, speak, playAudioBase64, doFoodSearch, setConversationActive, triggerAutoListen]);
+  }, [cancelPending, addMessage, setIsLoading, setSphereState, speak, playAudioBase64, doFoodSearch, setConversationActive, triggerAutoListen, language]);
 
   return { handleSearch, handleVoiceInput, handleAudioInput, initChat };
 };
